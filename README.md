@@ -5,6 +5,9 @@ SQLAlchemy - http://www.sqlalchemy.org/</br>
 aiogram - https://aiogram.readthedocs.io/en/latest/index.html</br>
 ```pip3 install -U aiogram```
 
+aiogram - https://aiogram.readthedocs.io/en/latest/index.html</br>
+```pip3 install -U aiosocksy```
+
 # Первый запуск
 Настройка файла conf.py шаблон - conf_template.py</br>
 ```nano conf_template.py```</br>

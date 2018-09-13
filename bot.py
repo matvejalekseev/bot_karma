@@ -1,3 +1,4 @@
+import aiohttp
 from datetime import datetime
 
 from aiogram import Bot, types
@@ -5,6 +6,7 @@ from aiogram.dispatcher import Dispatcher, FSMContext
 from aiogram.types import ContentType
 from aiogram.utils import executor
 from aiogram.utils.markdown import bold
+from aiosocksy import Socks5Auth
 from sqlalchemy import create_engine, update, delete, and_
 from sqlalchemy.orm import scoped_session, sessionmaker
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -16,7 +18,7 @@ import os
 from telebot.apihelper import leave_chat
 
 from messages import MESSAGES
-from conf import LOG_FILENAME, LOG_DIRECTORY, TOKEN, DB_FILENAME
+from conf import LOG_FILENAME, LOG_DIRECTORY, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL
 from db_map import Users, Chats, Karma
 from utils import AdminStates
 
@@ -25,7 +27,8 @@ from functions import *
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
                     level=logging.INFO)
 loop = asyncio.get_event_loop()
-bot = Bot(TOKEN, parse_mode=types.ParseMode.MARKDOWN)
+bot = Bot(TOKEN, parse_mode=types.ParseMode.MARKDOWN, proxy=PROXY_URL,
+          proxy_auth=PROXY_AUTH)
 dp = Dispatcher(bot, loop=loop, storage=MemoryStorage())
 dp.middleware.setup(LoggingMiddleware())
 
@@ -90,7 +93,7 @@ async def process_like_command(message: types.Message):
         await message.reply(MESSAGES['table'].format(name=message.chat.title) + text,
                             reply=False, disable_web_page_preview=True)
 
-@dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS | ContentType.GROUP_CHAT_CREATED)
+@dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS)
 async def process_autoleave(message: types.Message):
     me = await dp.bot.me
     ids_new_members = []
@@ -105,6 +108,20 @@ async def process_autoleave(message: types.Message):
             Session.commit()
         else:
             await bot.leave_chat(message.chat.id)
+
+
+@dp.message_handler(content_types=ContentType.GROUP_CHAT_CREATED)
+async def process_autoleave(message: types.Message):
+    me = await dp.bot.me
+    ids_new_members = []
+    if Session.query(Users).filter(and_(Users.user_id == message.from_user.id), (Users.status == 1)).all() and \
+                (message.chat.type == 'group' or message.chat.type == 'supergroup'):
+        await bot.send_message(message.chat.id, MESSAGES['new_chat'].format(name=message.chat.title))
+        chat = Chats(name=message.chat.title, chat_id=message.chat.id)
+        Session.add(chat)
+        Session.commit()
+    else:
+        await bot.leave_chat(message.chat.id)
 
 
 @dp.message_handler()
