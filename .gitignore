@@ -1,0 +1,8 @@
+./media/ogg/*
+./media/pics/*
+./media/files/*
+./media/videos/*
+./logs/*
+./idea
+conf.py
+*.db
