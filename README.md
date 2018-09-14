@@ -5,7 +5,7 @@ SQLAlchemy - http://www.sqlalchemy.org/</br>
 aiogram - https://aiogram.readthedocs.io/en/latest/index.html</br>
 ```pip3 install -U aiogram```
 
-aiogram - https://aiogram.readthedocs.io/en/latest/index.html</br>
+aiosocksy - https://pypi.org/project/aiosocksy/</br>
 ```pip3 install -U aiosocksy```
 
 # Первый запуск
