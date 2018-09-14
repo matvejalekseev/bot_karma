@@ -58,43 +58,46 @@ async def process_start_command(message: types.Message):
 @dp.message_handler(commands=['like'])
 async def process_like_command(message: types.Message):
     me = await dp.bot.me
-    from_user = message.reply_to_message.from_user
     if message.reply_to_message and (message.chat.type == 'group' or message.chat.type == 'supergroup') and \
-            Session.query(Users).filter(and_(Users.user_id == from_user.id, Users.status == 1)).all() \
-            and not from_user.id == me.id:
-        karma = Session.query(Karma).filter(and_((Karma.user_id == from_user.id), (Karma.chat_id == message.chat.id))).one()
+            Session.query(Users).filter(and_(Users.user_id == message.reply_to_message.from_user.id, Users.status == 1)).all() \
+            and not message.reply_to_message.from_user.id == me.id:
+        karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
+                                                 (Karma.chat_id == message.chat.id))).one()
         if karma:
             karma.karma += 1
             Session.commit()
-            await message.reply(MESSAGES['like'].format(name=prettyUsername(n=from_user.full_name,
-                        un=from_user.username)), reply=False, disable_web_page_preview=True)
+            await message.reply(MESSAGES['like'].format(name=prettyUsername(
+                n=message.reply_to_message.from_user.full_name,un=message.reply_to_message.from_user.username)),
+                reply=False, disable_web_page_preview=True)
 
 @dp.message_handler(commands=['dislike'])
 async def process_like_command(message: types.Message):
     me = await dp.bot.me
-    from_user = message.reply_to_message.from_user
     if message.reply_to_message and (message.chat.type == 'group' or message.chat.type == 'supergroup') and \
             Session.query(Users).filter(and_(Users.user_id == message.from_user.id, Users.status == 1)).all() \
-            and not from_user.id == me.id:
-        karma = Session.query(Karma).filter(and_((Karma.user_id == from_user.id), (Karma.chat_id == message.chat.id))).one()
+            and not message.reply_to_message.from_user.id == me.id:
+        karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
+                                                 (Karma.chat_id == message.chat.id))).one()
         if karma:
             karma.karma -= 1
             Session.commit()
-            await message.reply(MESSAGES['dislike'].format(name=prettyUsername(n=from_user.full_name,
-                        un=from_user.username)), reply=False, disable_web_page_preview=True)
+            await message.reply(MESSAGES['dislike'].format(name=prettyUsername(
+                n=message.reply_to_message.from_user.full_name,un=message.reply_to_message.from_user.username)),
+                                reply=False, disable_web_page_preview=True)
 
 @dp.message_handler(commands=['table'])
 async def process_like_command(message: types.Message):
     if Session.query(Users).filter(and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
         text = ''
-        for karma in Session.query(Karma).filter(Karma.chat_id == message.chat.id).all():
+        for karma in Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.karma.desc()).all():
             user = Session.query(Users).filter(Users.user_id == karma.user_id).one()
             text = text + str(prettyUsername(user.name, user.username)) + ' *' + str(karma.karma) + '*\n'
         await message.reply(MESSAGES['table'].format(name=message.chat.title) + text,
                             reply=False, disable_web_page_preview=True)
 
+
 @dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS)
-async def process_autoleave(message: types.Message):
+async def process_autoleave_new_members(message: types.Message):
     me = await dp.bot.me
     ids_new_members = []
     for member in message.new_chat_members:
@@ -102,31 +105,32 @@ async def process_autoleave(message: types.Message):
     if me.id in ids_new_members:
         if Session.query(Users).filter(and_(Users.user_id == message.from_user.id), (Users.status == 1)).all() and \
                 (message.chat.type == 'group' or message.chat.type == 'supergroup'):
-            await bot.send_message(message.chat.id, MESSAGES['new_chat'].format(name=message.chat.title))
+            Session.query(Chats).filter(Chats.chat_id == message.chat.id).delete()
             chat = Chats(name=message.chat.title, chat_id=message.chat.id)
             Session.add(chat)
             Session.commit()
+            count = await bot.get_chat_members_count(message.chat.id)
+            await bot.send_message(message.chat.id, MESSAGES['new_chat'].format(name=message.chat.title,
+                                                                                count=str(count)))
         else:
             await bot.leave_chat(message.chat.id)
 
 
 @dp.message_handler(content_types=ContentType.GROUP_CHAT_CREATED)
-async def process_autoleave(message: types.Message):
-    me = await dp.bot.me
-    ids_new_members = []
-    if Session.query(Users).filter(and_(Users.user_id == message.from_user.id), (Users.status == 1)).all() and \
-                (message.chat.type == 'group' or message.chat.type == 'supergroup'):
-        await bot.send_message(message.chat.id, MESSAGES['new_chat'].format(name=message.chat.title))
+async def process_autoleave_new_chat(message: types.Message):
+    if Session.query(Users).filter(and_(Users.user_id == message.from_user.id), (Users.status == 1)).all():
         chat = Chats(name=message.chat.title, chat_id=message.chat.id)
         Session.add(chat)
         Session.commit()
+        count = await bot.get_chat_members_count(message.chat.id)
+        await bot.send_message(message.chat.id, MESSAGES['new_chat'].format(name=message.chat.title,
+                                    count=str(count)))
     else:
         await bot.leave_chat(message.chat.id)
 
 
 @dp.message_handler()
 async def process_add_chatmember(message: types.Message):
-    print(str(message))
     user = message.from_user
     chat = message.chat
     if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
