@@ -3,7 +3,7 @@ from datetime import datetime
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher, FSMContext
-from aiogram.types import ContentType
+from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
 from aiogram.utils.markdown import bold
 from aiosocksy import Socks5Auth
@@ -58,32 +58,53 @@ async def process_start_command(message: types.Message):
 @dp.message_handler(commands=['like'])
 async def process_like_command(message: types.Message):
     me = await dp.bot.me
-    if message.reply_to_message and (message.chat.type == 'group' or message.chat.type == 'supergroup') and \
-            Session.query(Users).filter(and_(Users.user_id == message.reply_to_message.from_user.id, Users.status == 1)).all() \
-            and not message.reply_to_message.from_user.id == me.id:
-        karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
-                                                 (Karma.chat_id == message.chat.id))).one()
-        if karma:
-            karma.karma += 1
-            Session.commit()
-            await message.reply(MESSAGES['like'].format(name=prettyUsername(
-                n=message.reply_to_message.from_user.full_name,un=message.reply_to_message.from_user.username)),
-                reply=False, disable_web_page_preview=True)
+    if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
+            and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+        if message.reply_to_message and not message.reply_to_message.from_user.id == me.id:
+            karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
+                                                     (Karma.chat_id == message.chat.id))).one()
+            if karma:
+                karma.karma += 1
+                Session.commit()
+                await message.reply(MESSAGES['like'].format(name=prettyUsername(
+                    n=message.reply_to_message.from_user.full_name, un=message.reply_to_message.from_user.username)),
+                    reply=False, disable_web_page_preview=True)
+        elif not message.reply_to_message:
+            users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).all()
+            inline_kb_full = InlineKeyboardMarkup(row_width=1)
+            for user in users:
+                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+                inline_btn = InlineKeyboardButton(current_user.name, callback_data='like-' +
+                                                                                   str(round(current_user.user_id)))
+                inline_kb_full.add(inline_btn)
+            await message.reply(MESSAGES['like_keyboard'], reply=False, disable_web_page_preview=True,
+                                reply_markup=inline_kb_full)
 
 @dp.message_handler(commands=['dislike'])
 async def process_like_command(message: types.Message):
     me = await dp.bot.me
-    if message.reply_to_message and (message.chat.type == 'group' or message.chat.type == 'supergroup') and \
-            Session.query(Users).filter(and_(Users.user_id == message.from_user.id, Users.status == 1)).all() \
-            and not message.reply_to_message.from_user.id == me.id:
-        karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
-                                                 (Karma.chat_id == message.chat.id))).one()
-        if karma:
-            karma.karma -= 1
-            Session.commit()
-            await message.reply(MESSAGES['dislike'].format(name=prettyUsername(
-                n=message.reply_to_message.from_user.full_name,un=message.reply_to_message.from_user.username)),
-                                reply=False, disable_web_page_preview=True)
+    if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
+            and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+        if message.reply_to_message and not message.reply_to_message.from_user.id == me.id:
+            karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
+                                                     (Karma.chat_id == message.chat.id))).one()
+            if karma:
+                karma.karma -= 1
+                Session.commit()
+                await message.reply(MESSAGES['dislike'].format(name=prettyUsername(
+                    n=message.reply_to_message.from_user.full_name, un=message.reply_to_message.from_user.username)),
+                    reply=False, disable_web_page_preview=True)
+        elif not message.reply_to_message:
+            users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).all()
+            inline_kb_full = InlineKeyboardMarkup(row_width=1)
+            for user in users:
+                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+                inline_btn = InlineKeyboardButton(current_user.name, callback_data='dislike-' +
+                                                                                   str(round(current_user.user_id)))
+                inline_kb_full.add(inline_btn)
+            await message.reply(MESSAGES['dislike_keyboard'], reply=False, disable_web_page_preview=True,
+                                reply_markup=inline_kb_full)
+
 
 @dp.message_handler(commands=['table'])
 async def process_like_command(message: types.Message):
@@ -94,6 +115,48 @@ async def process_like_command(message: types.Message):
             text = text + str(prettyUsername(user.name, user.username)) + ' *' + str(karma.karma) + '*\n'
         await message.reply(MESSAGES['table'].format(name=message.chat.title) + text,
                             reply=False, disable_web_page_preview=True)
+
+
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('like-'))
+async def process_callback_like(callback_query: types.CallbackQuery):
+    code = callback_query.data[5:]
+    if Session.query(Users).filter(and_(Users.user_id == callback_query.from_user.id, Users.status == 1)).all():
+        if Session.query(Karma).filter(and_((Karma.user_id == code),
+                                                 (Karma.chat_id == callback_query.message.chat.id))).all():
+            karma = Session.query(Karma).filter(and_((Karma.user_id == code),
+                                                 (Karma.chat_id == callback_query.message.chat.id))).one()
+            karma.karma += 1
+            Session.commit()
+            user = Session.query(Users).filter(Users.user_id == karma.user_id).one()
+            await bot.edit_message_text(MESSAGES['like'].format(name=prettyUsername(
+                    n=user.name, un=user.username)), callback_query.message.chat.id,
+                                        callback_query.message.message_id, disable_web_page_preview=True)
+        else:
+            await bot.edit_message_text(MESSAGES['error'], callback_query.message.chat.id,
+                                        callback_query.message.message_id)
+    else:
+        await bot.answer_callback_query(callback_query.id, MESSAGES['only_admin'])
+
+
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('dislike-'))
+async def process_callback_like(callback_query: types.CallbackQuery):
+    code = callback_query.data[8:]
+    if Session.query(Users).filter(and_(Users.user_id == callback_query.from_user.id, Users.status == 1)).all():
+        if Session.query(Karma).filter(and_((Karma.user_id == code),
+                                                 (Karma.chat_id == callback_query.message.chat.id))).all():
+            karma = Session.query(Karma).filter(and_((Karma.user_id == code),
+                                                 (Karma.chat_id == callback_query.message.chat.id))).one()
+            karma.karma -= 1
+            Session.commit()
+            user = Session.query(Users).filter(Users.user_id == karma.user_id).one()
+            await bot.edit_message_text(MESSAGES['dislike'].format(name=prettyUsername(
+                    n=user.name, un=user.username)), callback_query.message.chat.id,
+                                        callback_query.message.message_id, disable_web_page_preview=True)
+        else:
+            await bot.edit_message_text(MESSAGES['error'], callback_query.message.chat.id,
+                                        callback_query.message.message_id)
+    else:
+        await bot.answer_callback_query(callback_query.id, MESSAGES['only_admin'])
 
 
 @dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS)
