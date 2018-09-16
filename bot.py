@@ -83,7 +83,7 @@ async def process_admin_list_command(message: types.Message):
 
 
 @dp.message_handler(commands=['users'])
-async def process_admin_list_command(message: types.Message):
+async def process_user_list_command(message: types.Message):
     if message.from_user.id == MY_ID:
         text = ''
         for chat in Session.query(Chats).all():
@@ -343,11 +343,10 @@ async def process_add_chatmember(message: types.Message):
     if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
         user = Users(user_id=user.id, name=user.full_name, username=user.username)
         Session.add(user)
-        Session.commit()
     if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
         karma = Karma(user_id=user.id, chat_id=chat.id)
         Session.add(karma)
-        Session.commit()
+    Session.commit()
 
 
 if __name__ == '__main__':
