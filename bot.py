@@ -158,18 +158,33 @@ async def process_like_command(message: types.Message):
             chat = message.chat
             if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
                 user = Users(user_id=user.id, name=user.full_name, username=user.username)
-                Session.add(user)
+                session = Session()
+                try:
+                    session.add(user)
+                    session.commit()
+                finally:
+                    session.close()
             if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
                 karma = Karma(user_id=user.id, chat_id=chat.id)
-                Session.add(karma)
+                session = Session()
+                try:
+                    session.add(karma)
+                    session.commit()
+                finally:
+                    session.close()
             karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
                                                      (Karma.chat_id == message.chat.id))).one()
             if karma:
                 karma.karma += 1
+                session = Session()
+                try:
+                    session.add(karma)
+                    session.commit()
+                finally:
+                    session.close()
                 await message.reply(MESSAGES['like'].format(name=prettyUsername(
                     n=message.reply_to_message.from_user.full_name, un=message.reply_to_message.from_user.username)),
                     reply=False, disable_web_page_preview=True)
-            Session.commit()
         elif not message.reply_to_message:
             users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
                 .limit(limit_inline_btn).all()
@@ -199,18 +214,33 @@ async def process_like_command(message: types.Message):
             chat = message.chat
             if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
                 user = Users(user_id=user.id, name=user.full_name, username=user.username)
-                Session.add(user)
+                session = Session()
+                try:
+                    session.add(user)
+                    session.commit()
+                finally:
+                    session.close()
             if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
                 karma = Karma(user_id=user.id, chat_id=chat.id)
-                Session.add(karma)
+                session = Session()
+                try:
+                    session.add(karma)
+                    session.commit()
+                finally:
+                    session.close()
             karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
                                                      (Karma.chat_id == message.chat.id))).one()
             if karma:
                 karma.karma -= 1
+                session = Session()
+                try:
+                    session.add(karma)
+                    session.commit()
+                finally:
+                    session.close()
                 await message.reply(MESSAGES['dislike'].format(name=prettyUsername(
                     n=message.reply_to_message.from_user.full_name, un=message.reply_to_message.from_user.username)),
                     reply=False, disable_web_page_preview=True)
-            Session.commit()
         elif not message.reply_to_message:
             users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
                 .limit(limit_inline_btn).all()
