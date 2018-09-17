@@ -34,11 +34,27 @@ user_list = '''\
 Список пользователей
 {text}
 '''
+chat_list = '''\
+Список чатов
+{text}
+'''
 user_chat_list = '''\
 *{name}*
 {text}
 '''
 user_karma = '{name} *{karma}*\n'
+super_admin_commands = '''\
+Ты главный админ и можешь добавлять бота в другие чаты и использовать команды:
+/admin - Назначить админа, просто сделай reply сообщения пользователя, которого хочешь сделать админом, отправив команду /admin@{username}
+/admins - Посмотреть всех админов
+/users - Посмотреть всех пользователей во всех чатах
+/admin_delete - Разжаловать админа, просто сделай reply сообщения пользователя, которого хочешь разжаловать, отправив команду /admin_delete@{username}
+'''
+admin_commands = '''\
+Ты админ и можешь добавлять бота в другие чаты и использовать команды:
+/admin - Назначить админа, просто сделай reply сообщения пользователя, которого хочешь сделать админом, отправив команду /admin@{username}
+/admin_delete - Разжаловать админа, просто сделай reply сообщения пользователя, которого хочешь разжаловать, отправив команду /admin_delete@{username}
+'''
 
 MESSAGES = {
         'hello': hello,
@@ -61,6 +77,9 @@ MESSAGES = {
         'user_list': user_list,
         'user_chat_list': user_chat_list,
         'user_karma': user_karma,
+        'super_admin_commands': super_admin_commands,
+        'admin_commands': admin_commands,
+        'chat_list': chat_list,
 }
 
 

@@ -1,13 +1,8 @@
-import aiohttp
-from datetime import datetime
-
 from aiogram import Bot, types
-from aiogram.dispatcher import Dispatcher, FSMContext
+from aiogram.dispatcher import Dispatcher
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
-from aiogram.utils.markdown import bold
-from aiosocksy import Socks5Auth
-from sqlalchemy import create_engine, update, delete, and_
+from sqlalchemy import create_engine, and_
 from sqlalchemy.orm import scoped_session, sessionmaker
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
@@ -15,17 +10,14 @@ import asyncio
 import logging
 import os
 
-from telebot.apihelper import leave_chat
-
 from messages import MESSAGES
 from conf import LOG_FILENAME, LOG_DIRECTORY, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID
 from db_map import Users, Chats, Karma
-from utils import AdminStates
 
 from functions import *
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
-                    level=logging.INFO)
+                    level=logging.INFO, filename=os.path.join(LOG_DIRECTORY, LOG_FILENAME))
 loop = asyncio.get_event_loop()
 bot = Bot(TOKEN, parse_mode=types.ParseMode.MARKDOWN, proxy=PROXY_URL,
           proxy_auth=PROXY_AUTH)
@@ -47,13 +39,28 @@ async def shutdown(dispatcher: Dispatcher):
 
 @dp.message_handler(commands=['help'])
 async def process_help_command(message: types.Message):
-    await message.reply(MESSAGES['help'], reply=False)
+    me = await dp.bot.me
+    if message.from_user.id == MY_ID:
+        await message.reply(MESSAGES['super_admin_commands'].format(username=me.username), reply=False, parse_mode=types.ParseMode.HTML)
+    elif Session.query(Users).filter(and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+        await message.reply(MESSAGES['admin_commands'].format(username=me.username), reply=False, parse_mode=types.ParseMode.HTML)
+    else:
+        await message.reply(MESSAGES['help'], reply=False)
 
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     await message.reply(MESSAGES['start'], reply=False)
 
+
+@dp.message_handler(commands=['me'])
+async def process_start_command(message: types.Message):
+    chat_text = ''
+    for user in Session.query(Karma).filter(Karma.user_id == message.from_user.id).all():
+        current_chat = Session.query(Chats).filter(Chats.chat_id == user.chat_id).one()
+        chat_text = chat_text + MESSAGES['user_karma'].format(name=current_chat.name, karma=str(user.karma))
+    await bot.send_message(message.from_user.id, MESSAGES['chat_list'].format(text=chat_text),
+                           disable_web_page_preview=True)
 
 @dp.message_handler(commands=['admin'])
 async def process_admin_command(message: types.Message):
@@ -114,20 +121,46 @@ async def process_delete_admin_command(message: types.Message):
                                     reply=False)
 
 
+@dp.message_handler(commands=['add'])
+async def process_like_command(message: types.Message):
+    me = await dp.bot.me
+    if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
+            and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+        if message.reply_to_message and not message.reply_to_message.from_user.id == me.id:
+            user = message.reply_to_message.from_user
+            chat = message.chat
+            if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
+                user = Users(user_id=user.id, name=user.full_name, username=user.username)
+                Session.add(user)
+            if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
+                karma = Karma(user_id=user.id, chat_id=chat.id)
+                Session.add(karma)
+            Session.commit()
+
+
+
 @dp.message_handler(commands=['like'])
 async def process_like_command(message: types.Message):
     me = await dp.bot.me
     if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
             and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
         if message.reply_to_message and not message.reply_to_message.from_user.id == me.id:
+            user = message.reply_to_message.from_user
+            chat = message.chat
+            if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
+                user = Users(user_id=user.id, name=user.full_name, username=user.username)
+                Session.add(user)
+            if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
+                karma = Karma(user_id=user.id, chat_id=chat.id)
+                Session.add(karma)
             karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
                                                      (Karma.chat_id == message.chat.id))).one()
             if karma:
                 karma.karma += 1
-                Session.commit()
                 await message.reply(MESSAGES['like'].format(name=prettyUsername(
                     n=message.reply_to_message.from_user.full_name, un=message.reply_to_message.from_user.username)),
                     reply=False, disable_web_page_preview=True)
+            Session.commit()
         elif not message.reply_to_message:
             users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
                 .limit(limit_inline_btn).all()
@@ -153,14 +186,22 @@ async def process_like_command(message: types.Message):
     if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
             and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
         if message.reply_to_message and not message.reply_to_message.from_user.id == me.id:
+            user = message.reply_to_message.from_user
+            chat = message.chat
+            if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
+                user = Users(user_id=user.id, name=user.full_name, username=user.username)
+                Session.add(user)
+            if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
+                karma = Karma(user_id=user.id, chat_id=chat.id)
+                Session.add(karma)
             karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
                                                      (Karma.chat_id == message.chat.id))).one()
             if karma:
                 karma.karma -= 1
-                Session.commit()
                 await message.reply(MESSAGES['dislike'].format(name=prettyUsername(
                     n=message.reply_to_message.from_user.full_name, un=message.reply_to_message.from_user.username)),
                     reply=False, disable_web_page_preview=True)
+            Session.commit()
         elif not message.reply_to_message:
             users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
                 .limit(limit_inline_btn).all()
@@ -334,19 +375,6 @@ async def process_kick_member(message: types.Message):
             Session.commit()
         await bot.send_message(chat.id, MESSAGES['bye'].format(name=prettyUsername(user.full_name, user.username)),
                                disable_web_page_preview=True)
-
-
-@dp.message_handler()
-async def process_add_chatmember(message: types.Message):
-    user = message.from_user
-    chat = message.chat
-    if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
-        user = Users(user_id=user.id, name=user.full_name, username=user.username)
-        Session.add(user)
-    if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
-        karma = Karma(user_id=user.id, chat_id=chat.id)
-        Session.add(karma)
-    Session.commit()
 
 
 if __name__ == '__main__':
