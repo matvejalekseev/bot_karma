@@ -11,20 +11,20 @@ import logging
 import os
 
 from messages import MESSAGES
-from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID
+from conf import LOG_FILENAME, LOG_DIRECTORY, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID
 from db_map import Users, Chats, Karma
 
 from functions import *
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
-                    level=logging.INFO, filename=LOG_FILENAME)
+                    level=logging.INFO, filename=os.path.join(LOG_DIRECTORY, LOG_FILENAME))
 loop = asyncio.get_event_loop()
 bot = Bot(TOKEN, parse_mode=types.ParseMode.MARKDOWN, proxy=PROXY_URL,
           proxy_auth=PROXY_AUTH)
 dp = Dispatcher(bot, loop=loop, storage=MemoryStorage())
 dp.middleware.setup(LoggingMiddleware())
 
-engine = create_engine("sqlite:///" + DB_FILENAME)
+engine = create_engine(f'sqlite:///{DB_FILENAME}')
 
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)

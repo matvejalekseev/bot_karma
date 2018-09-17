@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from conf import DB_FILENAME, LOG_FILENAME, LOG_DIRECTORY, MEDIA_DIRECTORY, MY_ID, MY_NAME, MY_USERNAME
+from conf import DB_FILENAME, LOG_FILENAME, LOG_DIRECTORY, MEDIA_DIRECTORY, MY_ID
 import os
 from db_map import Base
 from db_map import MediaTypes, Users
@@ -22,14 +22,14 @@ if not os.path.exists(os.path.join(MEDIA_DIRECTORY, "ogg")):
     os.makedirs(os.path.join(MEDIA_DIRECTORY, "ogg"))
 
 #Создаем файл для лога
-if not os.path.isfile("./" + LOG_FILENAME):
-    f = open(LOG_FILENAME, "w+")
+if not os.path.isfile(f'./{os.path.join(LOG_DIRECTORY, LOG_FILENAME)}'):
+    f = open(os.path.join(LOG_DIRECTORY, LOG_FILENAME), 'w+')
 
 #Настрйока для SQLite3
-engine = create_engine("sqlite:///" + DB_FILENAME)
+engine = create_engine(f'sqlite:///{DB_FILENAME}')
 
 #Создаем файл для базы данных
-if not os.path.isfile("./" + DB_FILENAME):
+if not os.path.isfile(f'./{DB_FILENAME}'):
     Base.metadata.create_all(engine)
 
     #Заполнение базы справочниками
@@ -37,7 +37,7 @@ if not os.path.isfile("./" + DB_FILENAME):
     Session = scoped_session(session_factory)
 
     #Справочник типов Медиа сообщений
-    video = MediaTypes(name="video")
+    video = MediaTypes(name='video')
     pic = MediaTypes(name="photo")
     file = MediaTypes(name="document")
     ogg = MediaTypes(name="voice")
@@ -50,7 +50,7 @@ if not os.path.isfile("./" + DB_FILENAME):
     Session.commit()
 
     # Добавление администратора
-    admin = Users(user_id=MY_ID, status=1, name=MY_NAME, username=MY_USERNAME)
+    admin = Users(user_id=MY_ID, status=1, name='Алексеев Матвей', username='alekseevmatvej')
 
     Session.add(admin)
 
