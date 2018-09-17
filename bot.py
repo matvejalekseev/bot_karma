@@ -17,7 +17,7 @@ from db_map import Users, Chats, Karma
 from functions import *
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
-                    level=logging.INFO, filename=LOG_FILENAME)
+                    level=logging.INFO)
 loop = asyncio.get_event_loop()
 bot = Bot(TOKEN, parse_mode=types.ParseMode.MARKDOWN, proxy=PROXY_URL,
           proxy_auth=PROXY_AUTH)
@@ -129,13 +129,22 @@ async def process_like_command(message: types.Message):
         if message.reply_to_message and not message.reply_to_message.from_user.id == me.id:
             user = message.reply_to_message.from_user
             chat = message.chat
-            if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
+            if not Session.query(Users).filter(Users.user_id == user.id).all():
                 user = Users(user_id=user.id, name=user.full_name, username=user.username)
-                Session.add(user)
+                session = Session()
+                try:
+                    session.add(user)
+                    session.commit()
+                finally:
+                    session.close()
             if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
                 karma = Karma(user_id=user.id, chat_id=chat.id)
-                Session.add(karma)
-            Session.commit()
+                session = Session()
+                try:
+                    session.add(karma)
+                    session.commit()
+                finally:
+                    session.close()
 
 
 
