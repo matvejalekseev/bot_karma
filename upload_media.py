@@ -27,7 +27,7 @@ async def uploadMediaFiles(folder, method, file_attr):
             with open(os.path.join(folder_path, filename), 'rb') as file:
                 if Session.query(MediaIds).filter(MediaIds.filename == filename).join(MediaTypes,
                                 MediaTypes.id == MediaIds.type).filter(MediaTypes.name == file_attr).all():
-                    logging.info('File ' + filename + ' in type ' + file_attr + ' already exists')
+                    logging.info('File ' + filename + ' intype ' + file_attr + ' already exists')
                 else:
                     msg = await method(MY_ID, file, disable_notification=True)
                     if file_attr == 'photo':
