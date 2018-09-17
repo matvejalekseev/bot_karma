@@ -1,12 +1,12 @@
 # Установка
 Python 3.6 - https://www.python.org</br>
-```wget https://www.python.org/ftp/python/3.6.3/Python-3.6.3.tgz```
-```tar -xvf Python-3.6.3.tgz```
-```cd Python-3.6.3```
-```./configure```
-```make```
-```make install```
-```python3.6 -V```
+```wget https://www.python.org/ftp/python/3.6.3/Python-3.6.3.tgz```</br>
+```tar -xvf Python-3.6.3.tgz```</br>
+```cd Python-3.6.3```</br>
+```./configure```</br>
+```make```</br>
+```make install```</br>
+```python3.6 -V```</br>
 
 SQLAlchemy - http://www.sqlalchemy.org/</br>
 ```pip3.6 install -U SQLAlchemy```
