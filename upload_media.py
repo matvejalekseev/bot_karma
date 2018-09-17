@@ -7,8 +7,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from db_map import MediaIds, MediaTypes
 from conf import TOKEN, MY_ID, DB_FILENAME, MEDIA_DIRECTORY, LOG_FILENAME
 
-logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
-                    level=logging.DEBUG, filename=LOG_FILENAME)
+logging.basicConfig(level=logging.DEBUG, filename=LOG_FILENAME)
 
 engine = create_engine("sqlite:///" + DB_FILENAME)
 
@@ -41,8 +40,7 @@ async def uploadMediaFiles(folder, method, file_attr):
                         session.add(newItem)
                         session.commit()
                     except Exception as e:
-                        logging.error(
-                            'Couldn\'t upload {}. Error is {}'.format(filename, e))
+                        logging.error('Couldn\'t upload {}. Error is {}'.format(filename, e))
                     else:
                         logging.info('Successfully uploaded and saved to DB file ' + filename + ' with id ' + file_id)
                     finally:
