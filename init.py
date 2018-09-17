@@ -22,8 +22,8 @@ if not os.path.exists(os.path.join(MEDIA_DIRECTORY, "ogg")):
     os.makedirs(os.path.join(MEDIA_DIRECTORY, "ogg"))
 
 #Создаем файл для лога
-if not os.path.isfile(f'./{os.path.join(LOG_DIRECTORY, LOG_FILENAME)}'):
-    f = open(os.path.join(LOG_DIRECTORY, LOG_FILENAME), 'w+')
+if not os.path.isfile(f'./{LOG_FILENAME}'):
+    f = open(LOG_FILENAME, 'w+')
 
 #Настрйока для SQLite3
 engine = create_engine(f'sqlite:///{DB_FILENAME}')

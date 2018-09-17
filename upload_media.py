@@ -5,10 +5,10 @@ from aiogram import Bot
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from db_map import MediaIds, MediaTypes
-from conf import TOKEN, MY_ID, DB_FILENAME, MEDIA_DIRECTORY, LOG_FILENAME, LOG_DIRECTORY
+from conf import TOKEN, MY_ID, DB_FILENAME, MEDIA_DIRECTORY, LOG_FILENAME
 
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
-                    level=logging.DEBUG, filename=os.path.join(LOG_DIRECTORY, LOG_FILENAME))
+                    level=logging.DEBUG, filename=LOG_FILENAME)
 
 engine = create_engine(f'sqlite:///{DB_FILENAME}')
 
