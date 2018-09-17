@@ -22,14 +22,14 @@ if not os.path.exists(os.path.join(MEDIA_DIRECTORY, "ogg")):
     os.makedirs(os.path.join(MEDIA_DIRECTORY, "ogg"))
 
 #Создаем файл для лога
-if not os.path.isfile(f"./" + LOG_FILENAME):
+if not os.path.isfile("./" + LOG_FILENAME):
     f = open(LOG_FILENAME, "w+")
 
 #Настрйока для SQLite3
-engine = create_engine(f"sqlite:///{DB_FILENAME}")
+engine = create_engine("sqlite:///"+ DB_FILENAME)
 
 #Создаем файл для базы данных
-if not os.path.isfile(f"./{DB_FILENAME}"):
+if not os.path.isfile("./" + DB_FILENAME):
     Base.metadata.create_all(engine)
 
     #Заполнение базы справочниками
