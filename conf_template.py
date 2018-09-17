@@ -20,6 +20,9 @@ log_filename_prom = "log file name example prom.log for prom"
 
 #Идентификатор личных сообщений в integer
 MY_ID = 1
+#Данные главного админа
+MY_NAME = "Name"
+MY_USERNAME = "Username"
 #Путь до папки с медиа бота
 MEDIA_DIRECTORY = "./media"
 #Путь до папки с логом
@@ -43,9 +46,9 @@ if mode == "prom":
     TOKEN = telegrambot_prom
     PAYMENTS_PROVIDER_TOKEN = payments_prom
     DB_FILENAME = db_filename_prom
-    LOG_FILENAME = log_filename_prom
+    LOG_FILENAME = os.path.join(LOG_DIRECTORY, log_filename_prom)
 else:
     TOKEN = telegrambot_test
     PAYMENTS_PROVIDER_TOKEN = payments_test
     DB_FILENAME = db_filename_test
-    LOG_FILENAME = log_filename_test
+    LOG_FILENAME = os.path.join(LOG_DIRECTORY, log_filename_test)
