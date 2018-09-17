@@ -7,8 +7,6 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from db_map import MediaIds, MediaTypes
 from conf import TOKEN, MY_ID, DB_FILENAME, MEDIA_DIRECTORY, LOG_FILENAME
 
-logging.basicConfig(level=logging.DEBUG, filename=LOG_FILENAME)
-
 engine = create_engine("sqlite:///" + DB_FILENAME)
 
 session_factory = sessionmaker(bind=engine)
