@@ -26,7 +26,7 @@ if not os.path.isfile("./" + LOG_FILENAME):
     f = open(LOG_FILENAME, "w+")
 
 #Настрйока для SQLite3
-engine = create_engine("sqlite:///"+ DB_FILENAME)
+engine = create_engine("sqlite:///" + DB_FILENAME)
 
 #Создаем файл для базы данных
 if not os.path.isfile("./" + DB_FILENAME):

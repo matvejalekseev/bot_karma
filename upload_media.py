@@ -5,10 +5,10 @@ from aiogram import Bot
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from db_map import MediaIds, MediaTypes
-from conf import TOKEN, MY_ID, DB_FILENAME, MEDIA_DIRECTORY, LOG_FILENAME, LOG_DIRECTORY
+from conf import TOKEN, MY_ID, DB_FILENAME, MEDIA_DIRECTORY, LOG_FILENAME
 
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
-                    level=logging.DEBUG, filename=os.path.join(LOG_DIRECTORY, LOG_FILENAME))
+                    level=logging.DEBUG, filename=LOG_FILENAME)
 
 engine = create_engine("sqlite:///" + DB_FILENAME)
 
@@ -23,11 +23,11 @@ async def uploadMediaFiles(folder, method, file_attr):
         for filename in os.listdir(folder_path):
             if filename.startswith('.'):
                 continue
-            logging.info(f'Started processing {filename}')
+            logging.info('Started processing ' + filename)
             with open(os.path.join(folder_path, filename), 'rb') as file:
-                if Session.query(MediaIds).filter(MediaIds.filename == filename).join(MediaTypes, MediaTypes.id == MediaIds.type).filter(MediaTypes.name == file_attr).all():
-                    logging.info(
-                        f'File {filename} in type {file_attr} already exists')
+                if Session.query(MediaIds).filter(MediaIds.filename == filename).join(MediaTypes,
+                                MediaTypes.id == MediaIds.type).filter(MediaTypes.name == file_attr).all():
+                    logging.info('File ' + filename + ' in type ' + file_attr + ' already exists')
                 else:
                     msg = await method(MY_ID, file, disable_notification=True)
                     if file_attr == 'photo':
@@ -44,13 +44,11 @@ async def uploadMediaFiles(folder, method, file_attr):
                         logging.error(
                             'Couldn\'t upload {}. Error is {}'.format(filename, e))
                     else:
-                        logging.info(
-                            f'Successfully uploaded and saved to DB file {filename} with id {file_id}')
+                        logging.info('Successfully uploaded and saved to DB file ' + filename + ' with id ' + file_id)
                     finally:
                         session.close()
     else:
-        logging.error(
-            f'Wrong type in {folder} folder')
+        logging.error('Wrong type in ' + folder + ' folder')
 
 loop = asyncio.get_event_loop()
 

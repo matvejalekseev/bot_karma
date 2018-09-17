@@ -24,7 +24,7 @@ bot = Bot(TOKEN, parse_mode=types.ParseMode.MARKDOWN, proxy=PROXY_URL,
 dp = Dispatcher(bot, loop=loop, storage=MemoryStorage())
 dp.middleware.setup(LoggingMiddleware())
 
-engine = create_engine(f'sqlite:///{DB_FILENAME}')
+engine = create_engine("sqlite:///" + DB_FILENAME)
 
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
