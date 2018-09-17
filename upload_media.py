@@ -10,7 +10,7 @@ from conf import TOKEN, MY_ID, DB_FILENAME, MEDIA_DIRECTORY, LOG_FILENAME, LOG_D
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
                     level=logging.DEBUG, filename=os.path.join(LOG_DIRECTORY, LOG_FILENAME))
 
-engine = create_engine(f'sqlite:///{DB_FILENAME}')
+engine = create_engine("sqlite:///" + DB_FILENAME)
 
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
