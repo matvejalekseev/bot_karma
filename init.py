@@ -1,25 +1,13 @@
 from sqlalchemy import create_engine
-from conf import DB_FILENAME, LOG_FILENAME, LOG_DIRECTORY, MEDIA_DIRECTORY, MY_ID
+from conf import DB_FILENAME, LOG_FILENAME, LOG_DIRECTORY, MY_ID, MY_USERNAME, MY_NAME
 import os
 from db_map import Base
-from db_map import MediaTypes, Users
+from db_map import Users
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 #Создаем папку для лога
 if not os.path.exists(LOG_DIRECTORY):
     os.makedirs(LOG_DIRECTORY)
-
-#Создаем папку для медиа
-if not os.path.exists(MEDIA_DIRECTORY):
-    os.makedirs(MEDIA_DIRECTORY)
-if not os.path.exists(os.path.join(MEDIA_DIRECTORY, "pics")):
-    os.makedirs(os.path.join(MEDIA_DIRECTORY, "pics"))
-if not os.path.exists(os.path.join(MEDIA_DIRECTORY, "videos")):
-    os.makedirs(os.path.join(MEDIA_DIRECTORY, "videos"))
-if not os.path.exists(os.path.join(MEDIA_DIRECTORY, "files")):
-    os.makedirs(os.path.join(MEDIA_DIRECTORY, "files"))
-if not os.path.exists(os.path.join(MEDIA_DIRECTORY, "ogg")):
-    os.makedirs(os.path.join(MEDIA_DIRECTORY, "ogg"))
 
 #Создаем файл для лога
 if not os.path.isfile(f'./{LOG_FILENAME}'):
@@ -36,21 +24,8 @@ if not os.path.isfile(f'./{DB_FILENAME}'):
     session_factory = sessionmaker(bind=engine)
     Session = scoped_session(session_factory)
 
-    #Справочник типов Медиа сообщений
-    video = MediaTypes(name='video')
-    pic = MediaTypes(name="photo")
-    file = MediaTypes(name="document")
-    ogg = MediaTypes(name="voice")
-
-    Session.add(video)
-    Session.add(pic)
-    Session.add(file)
-    Session.add(ogg)
-
-    Session.commit()
-
     # Добавление администратора
-    admin = Users(user_id=MY_ID, status=1, name='Алексеев Матвей', username='alekseevmatvej')
+    admin = Users(user_id=MY_ID, status=1, name=MY_NAME, username=MY_USERNAME)
 
     Session.add(admin)
 

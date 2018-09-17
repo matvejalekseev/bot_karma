@@ -6,31 +6,6 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 
-class MediaIds(Base):
-    __tablename__ = 'MediaIds'
-    id = Column(Integer, primary_key=True)
-    file_id = Column('file_id', String(255))
-    filename = Column('filename', String(255))
-    type = Column('type', Integer, ForeignKey('MediaTypes.id'), nullable=False)
-    upload_date = Column('upload_date', DateTime)
-    __table_args__ = (UniqueConstraint('type', 'filename', name='_type_file_uc'),)
-
-    def __init__(self, file_id, filename, type):
-        self.file_id = file_id
-        self.filename = filename
-        self.type = type
-        self.upload_date = datetime.now()
-
-
-class MediaTypes(Base):
-    __tablename__ = 'MediaTypes'
-    id = Column(Integer, primary_key=True)
-    name = Column('name', String(255), unique=True)
-
-    def __init__(self, name):
-        self.name = name
-
-
 class Users(Base):
     __tablename__ = 'Users'
     id = Column(Integer, primary_key=True)

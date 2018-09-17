@@ -20,8 +20,8 @@ log_filename_prom = "log file name example prom.log for prom"
 
 #Идентификатор личных сообщений в integer
 MY_ID = 1
-#Путь до папки с медиа бота
-MEDIA_DIRECTORY = "./media"
+MY_NAME = "name"
+MY_USERNAME = "username"
 #Путь до папки с логом
 LOG_DIRECTORY = "./logs"
 
