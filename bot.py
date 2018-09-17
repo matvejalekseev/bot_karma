@@ -1,6 +1,8 @@
+import random
+
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
-from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, input_media
 from aiogram.utils import executor
 from sqlalchemy import create_engine, and_
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -12,12 +14,12 @@ import os
 
 from messages import MESSAGES
 from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID
-from db_map import Users, Chats, Karma
+from db_map import Users, Chats, Karma, MediaIds
 
 from functions import *
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
-                    level=logging.INFO, filename=LOG_FILENAME)
+                    level=logging.INFO)
 loop = asyncio.get_event_loop()
 bot = Bot(TOKEN, parse_mode=types.ParseMode.MARKDOWN, proxy=PROXY_URL,
           proxy_auth=PROXY_AUTH)
@@ -35,6 +37,67 @@ limit_inline_btn = 5
 async def shutdown(dispatcher: Dispatcher):
     await dispatcher.storage.close()
     await dispatcher.storage.wait_closed()
+
+
+@dp.message_handler(commands=['joke'])
+async def process_joke(message: types.Message):
+    if message.reply_to_message:
+        me = await dp.bot.me
+        caption = message.text[6:]
+        if caption[0] == me.username[0]:
+            caption = caption[len(me.username)+1:]
+        file = message.reply_to_message
+        if file.animation:
+            session = Session()
+            media = MediaIds(media_id=file.animation.file_id, type='animation', caption=caption,
+                             json=str(file.animation))
+            try:
+                session.add(media)
+                session.commit()
+            finally:
+                session.close()
+        elif file.photo:
+            session = Session()
+            media = MediaIds(media_id=file.photo[len(file.photo)-1].file_id, type='photo', caption=caption,
+                             json=str(file.photo[len(file.photo)-1]))
+            try:
+                session.add(media)
+                session.commit()
+            finally:
+                session.close()
+        else:
+            await message.reply(MESSAGES['joke_another_type'], reply=False)
+    else:
+        Medias = Session.query(MediaIds).all()
+        i = random.randint(0, len(Medias))
+        media = Medias[i-1]
+        inline_kb = InlineKeyboardMarkup(row_width=1)
+        inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
+        inline_kb.add(inline_btn)
+        if media.type == 'photo':
+            await bot.send_photo(message.chat.id, media.media_id, caption=media.caption, reply_markup=inline_kb)
+        elif media.type == 'animation':
+            await bot.send_document(message.chat.id, media.media_id, caption=media.caption, reply_markup=inline_kb)
+
+
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-joke'))
+async def process_callback_dislike(callback_query: types.CallbackQuery):
+    Medias = Session.query(MediaIds).all()
+    i = random.randint(0, len(Medias))
+    media = Medias[i - 1]
+    inline_kb = InlineKeyboardMarkup(row_width=1)
+    inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
+    inline_kb.add(inline_btn)
+    if media.type == 'animation':
+        file = types.InputMediaAnimation(media.media_id)
+    else:
+        file = types.InputMediaPhoto(media.media_id)
+    await bot.edit_message_media(chat_id=callback_query.message.chat.id, media=file,
+                                 message_id=callback_query.message.message_id)
+    await bot.edit_message_caption(chat_id=callback_query.message.chat.id, caption=media.caption,
+                                   message_id=callback_query.message.message_id, reply_markup=inline_kb)
+    await bot.answer_callback_query(callback_query.id, '')
+
 
 
 @dp.message_handler(commands=['help'])
@@ -130,10 +193,10 @@ async def process_like_command(message: types.Message):
             user = message.reply_to_message.from_user
             chat = message.chat
             if not Session.query(Users).filter(Users.user_id == user.id).all():
-                user = Users(user_id=user.id, name=user.full_name, username=user.username)
+                user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
                 session = Session()
                 try:
-                    session.add(user)
+                    session.add(user_current)
                     session.commit()
                 finally:
                     session.close()
@@ -157,10 +220,10 @@ async def process_like_command(message: types.Message):
             user = message.reply_to_message.from_user
             chat = message.chat
             if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
-                user = Users(user_id=user.id, name=user.full_name, username=user.username)
+                user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
                 session = Session()
                 try:
-                    session.add(user)
+                    session.add(user_current)
                     session.commit()
                 finally:
                     session.close()
@@ -213,10 +276,10 @@ async def process_like_command(message: types.Message):
             user = message.reply_to_message.from_user
             chat = message.chat
             if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
-                user = Users(user_id=user.id, name=user.full_name, username=user.username)
+                user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
                 session = Session()
                 try:
-                    session.add(user)
+                    session.add(user_current)
                     session.commit()
                 finally:
                     session.close()
@@ -414,7 +477,6 @@ async def process_kick_member(message: types.Message):
             Session.commit()
         await bot.send_message(chat.id, MESSAGES['bye'].format(name=prettyUsername(user.full_name, user.username)),
                                disable_web_page_preview=True)
-
 
 if __name__ == '__main__':
     executor.start_polling(dp, on_shutdown=shutdown)

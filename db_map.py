@@ -53,3 +53,17 @@ class Karma(Base):
         self.chat_id = chat_id
         self.user_id = user_id
         self.karma = karma
+
+class MediaIds(Base):
+    __tablename__ = 'MediaIds'
+    id = Column(Integer, primary_key=True)
+    media_id = Column('media_id', String(255), unique=True)
+    type = Column('type', String(255))
+    caption = Column('caption', String(255))
+    json = Column('json', String(255))
+
+    def __init__(self, media_id, type, json, caption=None):
+        self.media_id = media_id
+        self.type = type
+        self.json = json
+        self.caption = caption

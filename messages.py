@@ -2,6 +2,7 @@ hello = 'Добрый день, {name}\n'
 start = 'Все доступные функции используются в определенных чатах, не обижайся'
 help = start
 error = 'Ошибка'
+joke_another_type = 'Только gif и картинки'
 like = '''\
 {name} - молодец!
 Добавим в карму добра!
@@ -80,6 +81,7 @@ MESSAGES = {
         'super_admin_commands': super_admin_commands,
         'admin_commands': admin_commands,
         'chat_list': chat_list,
+        'joke_another_type': joke_another_type,
 }
 
 
