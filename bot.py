@@ -19,7 +19,7 @@ from db_map import Users, Chats, Karma, MediaIds
 from functions import *
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
-                    level=logging.INFO)
+                    level=logging.INFO, filename=LOG_FILENAME)
 loop = asyncio.get_event_loop()
 bot = Bot(TOKEN, parse_mode=types.ParseMode.MARKDOWN, proxy=PROXY_URL,
           proxy_auth=PROXY_AUTH)
