@@ -1,4 +1,5 @@
 from aiosocksy import Socks5Auth
+import os
 
 #Не забудь переименовать в conf.py
 #Основыне режимы
@@ -24,6 +25,8 @@ MY_NAME = "name"
 MY_USERNAME = "username"
 #Путь до папки с логом
 LOG_DIRECTORY = "./logs"
+#Количество пользователей в инлайне
+LIMIT_INLINE_BTN = 3
 
 #Настройка proxy
 proxy_url = 'socks5://ip:port'
