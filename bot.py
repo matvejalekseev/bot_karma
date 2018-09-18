@@ -13,7 +13,7 @@ import logging
 import os
 
 from messages import MESSAGES
-from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID
+from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID, LIMIT_INLINE_BTN
 from db_map import Users, Chats, Karma, MediaIds
 
 from functions import *
@@ -21,7 +21,7 @@ from functions import *
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
                     level=logging.INFO, filename=LOG_FILENAME)
 loop = asyncio.get_event_loop()
-bot = Bot(TOKEN, parse_mode=types.ParseMode.MARKDOWN, proxy=PROXY_URL,
+bot = Bot(TOKEN, parse_mode=types.ParseMode.HTML, proxy=PROXY_URL,
           proxy_auth=PROXY_AUTH)
 dp = Dispatcher(bot, loop=loop, storage=MemoryStorage())
 dp.middleware.setup(LoggingMiddleware())
@@ -31,7 +31,7 @@ engine = create_engine(f'sqlite:///{DB_FILENAME}')
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 
-limit_inline_btn = 5
+limit_inline_btn = LIMIT_INLINE_BTN
 
 
 async def shutdown(dispatcher: Dispatcher):
@@ -41,11 +41,8 @@ async def shutdown(dispatcher: Dispatcher):
 
 @dp.message_handler(commands=['joke'])
 async def process_joke(message: types.Message):
-    if message.reply_to_message:
-        me = await dp.bot.me
+    if message.reply_to_message and message.chat.type == 'private':
         caption = message.text[6:]
-        if caption[0] == me.username[0]:
-            caption = caption[len(me.username)+1:]
         file = message.reply_to_message
         if file.animation:
             session = Session()
@@ -140,7 +137,7 @@ async def process_admin_command(message: types.Message):
                 user.status = 1
                 Session.commit()
                 await message.reply(MESSAGES['new_admin'].format(name=prettyUsername(user.name, user.username)),
-                                    reply=False)
+                                    reply=False, disable_web_page_preview=True)
 
 
 @dp.message_handler(commands=['admins'])
@@ -181,7 +178,7 @@ async def process_delete_admin_command(message: types.Message):
                 user.status = 0
                 Session.commit()
                 await message.reply(MESSAGES['delete_admin'].format(name=prettyUsername(user.name, user.username)),
-                                    reply=False)
+                                    reply=False, disable_web_page_preview=True)
 
 
 @dp.message_handler(commands=['add'])
@@ -189,26 +186,24 @@ async def process_like_command(message: types.Message):
     me = await dp.bot.me
     if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
             and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
-        if message.reply_to_message and not message.reply_to_message.from_user.id == me.id:
-            user = message.reply_to_message.from_user
-            chat = message.chat
-            if not Session.query(Users).filter(Users.user_id == user.id).all():
-                user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
-                session = Session()
-                try:
-                    session.add(user_current)
-                    session.commit()
-                finally:
-                    session.close()
-            if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
-                karma = Karma(user_id=user.id, chat_id=chat.id)
-                session = Session()
-                try:
-                    session.add(karma)
-                    session.commit()
-                finally:
-                    session.close()
-
+        user = message.from_user
+        chat = message.chat
+        if not Session.query(Users).filter(Users.user_id == user.id).all():
+            user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
+            session = Session()
+            try:
+                session.add(user_current)
+                session.commit()
+            finally:
+                session.close()
+        if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
+            karma = Karma(user_id=user.id, chat_id=chat.id)
+            session = Session()
+            try:
+                session.add(karma)
+                session.commit()
+            finally:
+                session.close()
 
 
 @dp.message_handler(commands=['like'])
@@ -216,55 +211,22 @@ async def process_like_command(message: types.Message):
     me = await dp.bot.me
     if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
             and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
-        if message.reply_to_message and not message.reply_to_message.from_user.id == me.id:
-            user = message.reply_to_message.from_user
-            chat = message.chat
-            if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
-                user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
-                session = Session()
-                try:
-                    session.add(user_current)
-                    session.commit()
-                finally:
-                    session.close()
-            if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
-                karma = Karma(user_id=user.id, chat_id=chat.id)
-                session = Session()
-                try:
-                    session.add(karma)
-                    session.commit()
-                finally:
-                    session.close()
-            karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
-                                                     (Karma.chat_id == message.chat.id))).one()
-            if karma:
-                karma.karma += 1
-                session = Session()
-                try:
-                    session.add(karma)
-                    session.commit()
-                finally:
-                    session.close()
-                await message.reply(MESSAGES['like'].format(name=prettyUsername(
-                    n=message.reply_to_message.from_user.full_name, un=message.reply_to_message.from_user.username)),
-                    reply=False, disable_web_page_preview=True)
-        elif not message.reply_to_message:
-            users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
-                .limit(limit_inline_btn).all()
-            inline_kb = InlineKeyboardMarkup(row_width=1)
-            count = Session.query(Karma).filter(Karma.chat_id == message.chat.id).count()
-            for user in users:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                inline_btn = InlineKeyboardButton(current_user.name, callback_data='like-' +
-                                                                                   str(round(current_user.user_id)))
-                inline_kb.add(inline_btn)
-            if count > limit_inline_btn:
-                inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
-                inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-                inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user.id)))
-                inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
-            await message.reply(MESSAGES['like_keyboard'], reply=False, disable_web_page_preview=True,
-                                reply_markup=inline_kb)
+        users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
+            .limit(limit_inline_btn).all()
+        inline_kb = InlineKeyboardMarkup(row_width=1)
+        count = Session.query(Karma).filter(Karma.chat_id == message.chat.id).count()
+        for user in users:
+            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+            inline_btn = InlineKeyboardButton(current_user.name, callback_data='like-' +
+                                                                               str(round(current_user.user_id)))
+            inline_kb.add(inline_btn)
+        if count > limit_inline_btn:
+            inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
+            inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
+            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user.id)))
+            inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+        await message.reply(MESSAGES['like_keyboard'], reply=False, disable_web_page_preview=True,
+                            reply_markup=inline_kb)
 
 
 @dp.message_handler(commands=['dislike'])
@@ -272,55 +234,22 @@ async def process_like_command(message: types.Message):
     me = await dp.bot.me
     if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
             and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
-        if message.reply_to_message and not message.reply_to_message.from_user.id == me.id:
-            user = message.reply_to_message.from_user
-            chat = message.chat
-            if not Session.query(Users).filter(Users.user_id == message.from_user.id).all():
-                user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
-                session = Session()
-                try:
-                    session.add(user_current)
-                    session.commit()
-                finally:
-                    session.close()
-            if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
-                karma = Karma(user_id=user.id, chat_id=chat.id)
-                session = Session()
-                try:
-                    session.add(karma)
-                    session.commit()
-                finally:
-                    session.close()
-            karma = Session.query(Karma).filter(and_((Karma.user_id == message.reply_to_message.from_user.id),
-                                                     (Karma.chat_id == message.chat.id))).one()
-            if karma:
-                karma.karma -= 1
-                session = Session()
-                try:
-                    session.add(karma)
-                    session.commit()
-                finally:
-                    session.close()
-                await message.reply(MESSAGES['dislike'].format(name=prettyUsername(
-                    n=message.reply_to_message.from_user.full_name, un=message.reply_to_message.from_user.username)),
-                    reply=False, disable_web_page_preview=True)
-        elif not message.reply_to_message:
-            users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
-                .limit(limit_inline_btn).all()
-            inline_kb = InlineKeyboardMarkup(row_width=1)
-            count = Session.query(Karma).filter(Karma.chat_id == message.chat.id).count()
-            for user in users:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                inline_btn = InlineKeyboardButton(current_user.name, callback_data='dislike-' +
-                                                                                   str(round(current_user.user_id)))
-                inline_kb.add(inline_btn)
-            if count > limit_inline_btn:
-                inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
-                inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-                inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user.id)))
-                inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
-            await message.reply(MESSAGES['dislike_keyboard'], reply=False, disable_web_page_preview=True,
-                                reply_markup=inline_kb)
+        users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
+            .limit(limit_inline_btn).all()
+        inline_kb = InlineKeyboardMarkup(row_width=1)
+        count = Session.query(Karma).filter(Karma.chat_id == message.chat.id).count()
+        for user in users:
+            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+            inline_btn = InlineKeyboardButton(current_user.name, callback_data='dislike-' +
+                                                                               str(round(current_user.user_id)))
+            inline_kb.add(inline_btn)
+        if count > limit_inline_btn:
+            inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
+            inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
+            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user.id)))
+            inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+        await message.reply(MESSAGES['dislike_keyboard'], reply=False, disable_web_page_preview=True,
+                            reply_markup=inline_kb)
 
 
 @dp.message_handler(commands=['karma'])
@@ -445,20 +374,24 @@ async def process_autoleave_new_members(message: types.Message):
             Session.commit()
             count = await bot.get_chat_members_count(message.chat.id)
             await bot.send_message(message.chat.id, MESSAGES['new_chat'].format(name=message.chat.title,
-                                                                                count=str(count)))
+                                                                                count=str(count),
+                                                                                command='/add@' + me.username))
         else:
             await bot.leave_chat(message.chat.id)
 
 
 @dp.message_handler(content_types=ContentType.GROUP_CHAT_CREATED)
 async def process_autoleave_new_chat(message: types.Message):
+    me = await dp.bot.me
     if Session.query(Users).filter(and_(Users.user_id == message.from_user.id), (Users.status == 1)).all():
         chat = Chats(name=message.chat.title, chat_id=message.chat.id)
         Session.add(chat)
         Session.commit()
         count = await bot.get_chat_members_count(message.chat.id)
         await bot.send_message(message.chat.id, MESSAGES['new_chat'].format(name=message.chat.title,
-                                                                            count=str(count)))
+                                                                            count=str(count),
+                                                                            command='/add@' + me.username),
+                               parse_mode=None)
     else:
         await bot.leave_chat(message.chat.id)
 

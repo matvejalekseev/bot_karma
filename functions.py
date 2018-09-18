@@ -10,7 +10,7 @@ def is_str(s):
 def prettyUsername(n,un):
     try:
         if is_str(un):
-            user = "[" + n + "](https://t.me/" + un + ")"
+            user = '<a href="https://t.me/' + un +'">' + n + '</a>'
         else:
             user = n
         return user
