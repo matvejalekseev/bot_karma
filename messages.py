@@ -42,7 +42,7 @@ chat_list = '''\
 {text}
 '''
 user_chat_list = '''\
-*{name}*
+<b>{name}</b>
 {text}
 '''
 user_karma = '{name} <b>{karma}</b>\n'
