@@ -184,8 +184,7 @@ async def process_delete_admin_command(message: types.Message):
 @dp.message_handler(commands=['add'])
 async def process_like_command(message: types.Message):
     me = await dp.bot.me
-    if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
-            and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+    if (message.chat.type == 'group' or message.chat.type == 'supergroup'):
         user = message.from_user
         chat = message.chat
         if not Session.query(Users).filter(Users.user_id == user.id).all():
