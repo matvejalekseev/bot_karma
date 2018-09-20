@@ -1,4 +1,6 @@
+import pprint
 import random
+import json
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
@@ -55,8 +57,8 @@ async def process_joke(message: types.Message):
                 session.close()
         elif file.photo:
             session = Session()
-            media = MediaIds(media_id=file.photo[len(file.photo)-1].file_id, type='photo', caption=caption,
-                             json=str(file.photo[len(file.photo)-1]))
+            media = MediaIds(media_id=file.photo[len(file.photo) - 1].file_id, type='photo', caption=caption,
+                             json=str(file.photo[len(file.photo) - 1]))
             try:
                 session.add(media)
                 session.commit()
@@ -67,7 +69,7 @@ async def process_joke(message: types.Message):
     else:
         Medias = Session.query(MediaIds).all()
         i = random.randint(0, len(Medias))
-        media = Medias[i-1]
+        media = Medias[i - 1]
         inline_kb = InlineKeyboardMarkup(row_width=1)
         inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
         inline_kb.add(inline_btn)
@@ -96,14 +98,15 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id, '')
 
 
-
 @dp.message_handler(commands=['help'])
 async def process_help_command(message: types.Message):
     me = await dp.bot.me
     if message.from_user.id == MY_ID:
-        await message.reply(MESSAGES['super_admin_commands'].format(username=me.username), reply=False, parse_mode=types.ParseMode.HTML)
+        await message.reply(MESSAGES['super_admin_commands'].format(username=me.username), reply=False,
+                            parse_mode=types.ParseMode.HTML)
     elif Session.query(Users).filter(and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
-        await message.reply(MESSAGES['admin_commands'].format(username=me.username), reply=False, parse_mode=types.ParseMode.HTML)
+        await message.reply(MESSAGES['admin_commands'].format(username=me.username), reply=False,
+                            parse_mode=types.ParseMode.HTML)
     else:
         await message.reply(MESSAGES['help'], reply=False)
 
@@ -111,6 +114,13 @@ async def process_help_command(message: types.Message):
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     await message.reply(MESSAGES['start'], reply=False)
+
+
+@dp.message_handler(commands=['src'])
+async def process_start_command(message: types.Message):
+    json_msg = message.as_json()
+    await message.reply("<pre>" + json.dumps(json.loads(json_msg, encoding="utf-8"), sort_keys=True, indent=4, ensure_ascii=False)
+                        + "</pre>", reply=False)
 
 
 @dp.message_handler(commands=['me'])
@@ -121,6 +131,7 @@ async def process_start_command(message: types.Message):
         chat_text = chat_text + MESSAGES['user_karma'].format(name=current_chat.name, karma=str(user.karma))
     await bot.send_message(message.from_user.id, MESSAGES['chat_list'].format(text=chat_text),
                            disable_web_page_preview=True)
+
 
 @dp.message_handler(commands=['admin'])
 async def process_admin_command(message: types.Message):
@@ -158,7 +169,8 @@ async def process_user_list_command(message: types.Message):
             for user in Session.query(Karma).filter(Karma.chat_id == chat.chat_id).all():
                 current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
                 chat_text = chat_text + MESSAGES['user_karma'].format(name=prettyUsername(current_user.name,
-                            current_user.username), karma=str(user.karma))
+                                                                                          current_user.username),
+                                                                      karma=str(user.karma))
             text = text + MESSAGES['user_chat_list'].format(text=chat_text, name=chat.name)
         await message.reply(MESSAGES['user_list'].format(text=text), reply=False, disable_web_page_preview=True)
 
@@ -409,6 +421,7 @@ async def process_kick_member(message: types.Message):
             Session.commit()
         await bot.send_message(chat.id, MESSAGES['bye'].format(name=prettyUsername(user.full_name, user.username)),
                                disable_web_page_preview=True)
+
 
 if __name__ == '__main__':
     executor.start_polling(dp, on_shutdown=shutdown)
