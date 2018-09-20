@@ -148,7 +148,7 @@ async def process_admin_command(message: types.Message):
                                                         Karma.chat_id == message.chat.id)).one()
                 karma.status = 1
                 Session.commit()
-                user = Session.query(Karma).filter(Users.user_id == message.reply_to_message.from_user.id).one()
+                user = Session.query(Users).filter(Users.user_id == message.reply_to_message.from_user.id).one()
                 await message.reply(MESSAGES['new_admin'].format(name=prettyUsername(user.name, user.username)),
                                     reply=False, disable_web_page_preview=True)
 
@@ -197,7 +197,7 @@ async def process_delete_admin_command(message: types.Message):
                                                          Karma.chat_id == message.chat.id)).one()
                 karma.status = 0
                 Session.commit()
-                user = Session.query(Karma).filter(Users.user_id == message.reply_to_message.from_user.id).one()
+                user = Session.query(Users).filter(Users.user_id == message.reply_to_message.from_user.id).one()
                 await message.reply(MESSAGES['delete_admin'].format(name=prettyUsername(user.name, user.username)),
                                     reply=False, disable_web_page_preview=True)
 
