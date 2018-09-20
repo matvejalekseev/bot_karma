@@ -1,6 +1,8 @@
+import aiohttp
 import pprint
 import random
 import json
+import aiohttp
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
@@ -13,6 +15,7 @@ from aiogram.contrib.middlewares.logging import LoggingMiddleware
 import asyncio
 import logging
 import os
+
 
 from messages import MESSAGES
 from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID, LIMIT_INLINE_BTN
@@ -115,6 +118,20 @@ async def process_help_command(message: types.Message):
 @dp.message_handler(commands=['start'], func=lambda message: message.chat.type == 'private')
 async def process_start_command(message: types.Message):
     await message.reply(MESSAGES['start'], reply=False)
+
+
+@dp.message_handler(commands=['src'])
+async def process_start_command(message: types.Message):
+    json_msg = message.as_json()
+    await message.reply("<pre>" + json.dumps(json.loads(json_msg, encoding="utf-8"), sort_keys=True, indent=4, ensure_ascii=False)
+                        + "</pre>", reply=False)
+
+@dp.message_handler(commands=['advice'])
+async def process_start_command(message: types.Message):
+    async with aiohttp.ClientSession() as session:
+        async with session.get('http://fucking-great-advice.ru/api/random') as resp:
+            await message.reply((json.loads(await resp.text(), encoding="utf-8")['text']), reply=False)
+
 
 
 @dp.message_handler(commands=['src'])
