@@ -318,13 +318,13 @@ async def process_callback_next(callback_query: types.CallbackQuery):
         inline_btn = InlineKeyboardButton(current_user.name, callback_data='dislike-' +
                                                                            str(round(current_user.user_id)))
         inline_kb.add(inline_btn)
-        inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(code))
-        inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-        if count > limit_inline_btn:
-            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user.id)))
-        else:
-            inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
-        inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+    inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(code))
+    inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
+    if count > limit_inline_btn:
+        inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user.id)))
+    else:
+        inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
+    inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
     await bot.edit_message_reply_markup(callback_query.message.chat.id, callback_query.message.message_id,
                                         reply_markup=inline_kb)
 
@@ -342,13 +342,13 @@ async def process_callback_prev(callback_query: types.CallbackQuery):
         inline_btn = InlineKeyboardButton(current_user.name, callback_data='dislike-' +
                                                                            str(round(current_user.user_id)))
         inline_kb.add(inline_btn)
-        if count > limit_inline_btn:
-            inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(round(user.id)))
-        else:
-            inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
-        inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-        inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(code))
-        inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+    if count > limit_inline_btn:
+        inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(round(user.id)))
+    else:
+        inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
+    inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
+    inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(code))
+    inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
     await bot.edit_message_reply_markup(callback_query.message.chat.id, callback_query.message.message_id,
                                         reply_markup=inline_kb)
 
