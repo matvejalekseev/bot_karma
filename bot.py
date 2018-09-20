@@ -144,10 +144,11 @@ async def process_admin_command(message: types.Message):
             elif message.reply_to_message.from_user.id == MY_ID:
                 await message.reply(MESSAGES['admin_not_admin'], reply=False)
             else:
-                user = Session.query(Karma).filter(and_(Karma.user_id == message.reply_to_message.from_user.id,
+                karma = Session.query(Karma).filter(and_(Karma.user_id == message.reply_to_message.from_user.id,
                                                         Karma.chat_id == message.chat.id)).one()
-                user.status = 1
+                karma.status = 1
                 Session.commit()
+                user = Session.query(Karma).filter(Users.user_is == message.reply_to_message.from_user.id).one()
                 await message.reply(MESSAGES['new_admin'].format(name=prettyUsername(user.name, user.username)),
                                     reply=False, disable_web_page_preview=True)
 
@@ -192,10 +193,11 @@ async def process_delete_admin_command(message: types.Message):
             elif message.reply_to_message.from_user.id == MY_ID:
                 await message.reply(MESSAGES['admin_not_admin'], reply=False)
             else:
-                user = Session.query(Karma).filter(and_(Karma.user_id == message.reply_to_message.from_user.id,
-                                                        Karma.chat_id == message.chat.id)).one()
-                user.status = 0
+                karma = Session.query(Karma).filter(and_(Karma.user_id == message.reply_to_message.from_user.id,
+                                                         Karma.chat_id == message.chat.id)).one()
+                karma.status = 0
                 Session.commit()
+                user = Session.query(Karma).filter(Users.user_is == message.reply_to_message.from_user.id).one()
                 await message.reply(MESSAGES['delete_admin'].format(name=prettyUsername(user.name, user.username)),
                                     reply=False, disable_web_page_preview=True)
 
