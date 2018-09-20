@@ -30,7 +30,6 @@ delete_admin = 'Ну значит за дело - {name}'
 bye = 'Прощай {name}'
 admin_list = '''\
 Список админов
-
 {text}
 '''
 user_list = '''\

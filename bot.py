@@ -18,7 +18,7 @@ from messages import MESSAGES
 from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID, LIMIT_INLINE_BTN
 from db_map import Users, Chats, Karma, MediaIds
 
-from functions import *
+from functions import prettyUsername, is_admin_in_chat, add_user_chat
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
                     level=logging.INFO, filename=LOG_FILENAME)
@@ -43,6 +43,7 @@ async def shutdown(dispatcher: Dispatcher):
 
 @dp.message_handler(commands=['joke'])
 async def process_joke(message: types.Message):
+    add_user_chat(message.from_user, message.chat)
     if message.reply_to_message and message.chat.type == 'private':
         caption = message.text[6:]
         file = message.reply_to_message
@@ -98,20 +99,20 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id, '')
 
 
-@dp.message_handler(commands=['help'])
+@dp.message_handler(commands=['help'], func=lambda message: message.chat.type == 'private')
 async def process_help_command(message: types.Message):
     me = await dp.bot.me
     if message.from_user.id == MY_ID:
         await message.reply(MESSAGES['super_admin_commands'].format(username=me.username), reply=False,
                             parse_mode=types.ParseMode.HTML)
-    elif Session.query(Users).filter(and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+    elif is_admin_in_chat(message.from_user.id, message.chat.id):
         await message.reply(MESSAGES['admin_commands'].format(username=me.username), reply=False,
                             parse_mode=types.ParseMode.HTML)
     else:
         await message.reply(MESSAGES['help'], reply=False)
 
 
-@dp.message_handler(commands=['start'])
+@dp.message_handler(commands=['start'], func=lambda message: message.chat.type == 'private')
 async def process_start_command(message: types.Message):
     await message.reply(MESSAGES['start'], reply=False)
 
@@ -133,18 +134,18 @@ async def process_start_command(message: types.Message):
                            disable_web_page_preview=True)
 
 
-@dp.message_handler(commands=['admin'])
+@dp.message_handler(commands=['admin'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_admin_command(message: types.Message):
     me = await dp.bot.me
-    if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
-            and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+    if is_admin_in_chat(message.from_user.id, message.chat.id):
         if message.reply_to_message:
             if message.reply_to_message.from_user.id == me.id:
                 await message.reply(MESSAGES['admin_not_me'], reply=False)
             elif message.reply_to_message.from_user.id == MY_ID:
                 await message.reply(MESSAGES['admin_not_admin'], reply=False)
             else:
-                user = Session.query(Users).filter(Users.user_id == message.reply_to_message.from_user.id).one()
+                user = Session.query(Karma).filter(and_(Karma.user_id == message.reply_to_message.from_user.id,
+                                                        Karma.chat_id == message.chat.id)).one()
                 user.status = 1
                 Session.commit()
                 await message.reply(MESSAGES['new_admin'].format(name=prettyUsername(user.name, user.username)),
@@ -157,6 +158,12 @@ async def process_admin_list_command(message: types.Message):
         text = ''
         for admin in Session.query(Users).filter(Users.status == 1).all():
             text = text + prettyUsername(admin.name, admin.username) + '\n'
+        for chat in Session.query(Chats).all():
+            chat_text = ''
+            for user in Session.query(Karma).filter(and_(Karma.chat_id == chat.chat_id, Karma.status == 1)).all():
+                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+                chat_text = chat_text + prettyUsername(current_user.name,current_user.username) + '\n'
+            text = text + MESSAGES['user_chat_list'].format(text=chat_text, name=chat.name)
         await message.reply(MESSAGES['admin_list'].format(text=text), reply=False, disable_web_page_preview=True)
 
 
@@ -175,53 +182,33 @@ async def process_user_list_command(message: types.Message):
         await message.reply(MESSAGES['user_list'].format(text=text), reply=False, disable_web_page_preview=True)
 
 
-@dp.message_handler(commands=['admin_delete'])
+@dp.message_handler(commands=['admin_delete'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_delete_admin_command(message: types.Message):
     me = await dp.bot.me
-    if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
-            and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+    if is_admin_in_chat(message.from_user.id, message.chat.id):
         if message.reply_to_message:
             if message.reply_to_message.from_user.id == me.id:
                 await message.reply(MESSAGES['admin_not_me'], reply=False)
             elif message.reply_to_message.from_user.id == MY_ID:
                 await message.reply(MESSAGES['admin_not_admin'], reply=False)
             else:
-                user = Session.query(Users).filter(Users.user_id == message.reply_to_message.from_user.id).one()
+                user = Session.query(Karma).filter(and_(Karma.user_id == message.reply_to_message.from_user.id,
+                                                        Karma.chat_id == message.chat.id)).one()
                 user.status = 0
                 Session.commit()
                 await message.reply(MESSAGES['delete_admin'].format(name=prettyUsername(user.name, user.username)),
                                     reply=False, disable_web_page_preview=True)
 
 
-@dp.message_handler(commands=['add'])
+@dp.message_handler(commands=['add'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
-    me = await dp.bot.me
-    if (message.chat.type == 'group' or message.chat.type == 'supergroup'):
-        user = message.from_user
-        chat = message.chat
-        if not Session.query(Users).filter(Users.user_id == user.id).all():
-            user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
-            session = Session()
-            try:
-                session.add(user_current)
-                session.commit()
-            finally:
-                session.close()
-        if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
-            karma = Karma(user_id=user.id, chat_id=chat.id)
-            session = Session()
-            try:
-                session.add(karma)
-                session.commit()
-            finally:
-                session.close()
+    add_user_chat(message.from_user, message.chat)
 
 
-@dp.message_handler(commands=['like'])
+@dp.message_handler(commands=['like'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
-    me = await dp.bot.me
-    if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
-            and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+    add_user_chat(message.from_user, message.chat)
+    if is_admin_in_chat(message.from_user.id, message.chat.id):
         users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
             .limit(limit_inline_btn).all()
         inline_kb = InlineKeyboardMarkup(row_width=1)
@@ -240,11 +227,10 @@ async def process_like_command(message: types.Message):
                             reply_markup=inline_kb)
 
 
-@dp.message_handler(commands=['dislike'])
+@dp.message_handler(commands=['dislike'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
-    me = await dp.bot.me
-    if (message.chat.type == 'group' or message.chat.type == 'supergroup') and Session.query(Users).filter(
-            and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+    add_user_chat(message.from_user, message.chat)
+    if is_admin_in_chat(message.from_user.id, message.chat.id):
         users = Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.id) \
             .limit(limit_inline_btn).all()
         inline_kb = InlineKeyboardMarkup(row_width=1)
@@ -265,7 +251,8 @@ async def process_like_command(message: types.Message):
 
 @dp.message_handler(commands=['karma'])
 async def process_like_command(message: types.Message):
-    if Session.query(Users).filter(and_(Users.user_id == message.from_user.id, Users.status == 1)).all():
+    add_user_chat(message.from_user, message.chat)
+    if is_admin_in_chat(message.from_user.id, message.chat.id):
         text = ''
         for karma in Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.karma.desc()).all():
             user = Session.query(Users).filter(Users.user_id == karma.user_id).one()
@@ -278,7 +265,7 @@ async def process_like_command(message: types.Message):
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('like-'))
 async def process_callback_like(callback_query: types.CallbackQuery):
     code = callback_query.data[5:]
-    if Session.query(Users).filter(and_(Users.user_id == callback_query.from_user.id, Users.status == 1)).all():
+    if is_admin_in_chat(callback_query.from_user.id, callback_query.message.chat.id):
         if Session.query(Karma).filter(and_((Karma.user_id == code),
                                             (Karma.chat_id == callback_query.message.chat.id))).all():
             karma = Session.query(Karma).filter(and_((Karma.user_id == code),
@@ -299,7 +286,7 @@ async def process_callback_like(callback_query: types.CallbackQuery):
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('dislike-'))
 async def process_callback_dislike(callback_query: types.CallbackQuery):
     code = callback_query.data[8:]
-    if Session.query(Users).filter(and_(Users.user_id == callback_query.from_user.id, Users.status == 1)).all():
+    if is_admin_in_chat(callback_query.from_user.id, callback_query.message.chat.id):
         if Session.query(Karma).filter(and_((Karma.user_id == code),
                                             (Karma.chat_id == callback_query.message.chat.id))).all():
             karma = Session.query(Karma).filter(and_((Karma.user_id == code),

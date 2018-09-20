@@ -46,12 +46,14 @@ class Karma(Base):
     id = Column(Integer, primary_key=True)
     chat_id = Column('chat_id', Numeric, ForeignKey('Chats.chat_id'))
     user_id = Column('user_id', Numeric, ForeignKey('Users.user_id'))
+    status = Column('status', Integer) #0 - Пользователь, 1 - Админ
     karma = Column('karma', Integer)
     __table_args__ = (UniqueConstraint('user_id', 'chat_id', name='_chat_event_uc'),)
 
-    def __init__(self, chat_id, user_id, karma=0):
+    def __init__(self, chat_id, user_id, karma=0, status=0):
         self.chat_id = chat_id
         self.user_id = user_id
+        self.status = status
         self.karma = karma
 
 class MediaIds(Base):
