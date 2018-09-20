@@ -128,6 +128,7 @@ async def process_start_command(message: types.Message):
 
 @dp.message_handler(commands=['advice'])
 async def process_start_command(message: types.Message):
+    add_user_chat(message.from_user, message.chat)
     async with aiohttp.ClientSession() as session:
         async with session.get('http://fucking-great-advice.ru/api/random') as resp:
             await message.reply((json.loads(await resp.text(), encoding="utf-8")['text']), reply=False)
