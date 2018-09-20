@@ -249,7 +249,7 @@ async def process_like_command(message: types.Message):
                             reply_markup=inline_kb)
 
 
-@dp.message_handler(commands=['karma'])
+@dp.message_handler(commands=['karma'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     if is_admin_in_chat(message.from_user.id, message.chat.id):
