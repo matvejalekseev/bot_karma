@@ -6,7 +6,7 @@ import aiohttp
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
-from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, input_media
+from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, input_media, InputMediaDocument
 from aiogram.utils import executor
 from sqlalchemy import create_engine, and_
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -44,7 +44,7 @@ async def shutdown(dispatcher: Dispatcher):
     await dispatcher.storage.wait_closed()
 
 
-@dp.message_handler(commands=['joke'])
+@dp.message_handler(commands=['myjoke'])
 async def process_joke(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     if message.reply_to_message and message.chat.type == 'private':
@@ -83,7 +83,7 @@ async def process_joke(message: types.Message):
             await bot.send_document(message.chat.id, media.media_id, caption=media.caption, reply_markup=inline_kb)
 
 
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-joke'))
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-myjoke'))
 async def process_callback_dislike(callback_query: types.CallbackQuery):
     Medias = Session.query(MediaIds).all()
     i = random.randint(0, len(Medias))
@@ -133,6 +133,39 @@ async def process_start_command(message: types.Message):
         async with session.get('http://fucking-great-advice.ru/api/random') as resp:
             await message.reply((json.loads(await resp.text(), encoding="utf-8")['text']), reply=False)
 
+
+
+@dp.message_handler(commands=['joke'])
+async def process_start_command(message: types.Message):
+    add_user_chat(message.from_user, message.chat)
+    async with aiohttp.ClientSession() as session:
+        i = random.randint(0, 2300)
+        async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i)) as resp:
+            response = json.loads(await resp.text())['result']
+            j = random.randint(0, len(response) - 1)
+            inline_kb = InlineKeyboardMarkup(row_width=1)
+            inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
+            inline_kb.add(inline_btn)
+            await bot.send_document(chat_id=message.chat.id, caption=response[j]['description'],
+                                     document=response[j]['videoURL'], reply_markup=inline_kb)
+
+
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-joke'))
+async def process_callback_dislike(callback_query: types.CallbackQuery):
+    async with aiohttp.ClientSession() as session:
+        i = random.randint(0, 2300)
+        async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i)) as resp:
+            response = json.loads(await resp.text())['result']
+            j = random.randint(0, len(response) - 1)
+            inline_kb = InlineKeyboardMarkup(row_width=1)
+            inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
+            inline_kb.add(inline_btn)
+            media = InputMediaDocument(response[j]['videoURL'])
+            await bot.edit_message_media(chat_id=callback_query.message.chat.id, media=media,
+                                         message_id=callback_query.message.message_id)
+            await bot.edit_message_caption(chat_id=callback_query.message.chat.id, caption=response[j]['description'],
+                                           message_id=callback_query.message.message_id, reply_markup=inline_kb)
+    await bot.answer_callback_query(callback_query.id, '')
 
 
 @dp.message_handler(commands=['src'])
