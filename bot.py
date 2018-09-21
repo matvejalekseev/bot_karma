@@ -140,7 +140,7 @@ async def process_start_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     async with aiohttp.ClientSession() as session:
         i = random.randint(0, 2300)
-        async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i)) as resp:
+        async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i), verify_ssl=False) as resp:
             response = json.loads(await resp.text())['result']
             j = random.randint(0, len(response) - 1)
             inline_kb = InlineKeyboardMarkup(row_width=1)
@@ -154,7 +154,7 @@ async def process_start_command(message: types.Message):
 async def process_callback_dislike(callback_query: types.CallbackQuery):
     async with aiohttp.ClientSession() as session:
         i = random.randint(0, 2300)
-        async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i)) as resp:
+        async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i), verify_ssl=False) as resp:
             response = json.loads(await resp.text())['result']
             j = random.randint(0, len(response) - 1)
             inline_kb = InlineKeyboardMarkup(row_width=1)
