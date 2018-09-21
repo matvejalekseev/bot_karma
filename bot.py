@@ -75,7 +75,7 @@ async def process_joke(message: types.Message):
         i = random.randint(0, len(Medias))
         media = Medias[i - 1]
         inline_kb = InlineKeyboardMarkup(row_width=1)
-        inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
+        inline_btn = InlineKeyboardButton('🔄', callback_data='next-myjoke')
         inline_kb.add(inline_btn)
         if media.type == 'photo':
             await bot.send_photo(message.chat.id, media.media_id, caption=media.caption, reply_markup=inline_kb)
@@ -89,7 +89,7 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
     i = random.randint(0, len(Medias))
     media = Medias[i - 1]
     inline_kb = InlineKeyboardMarkup(row_width=1)
-    inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
+    inline_btn = InlineKeyboardButton('🔄', callback_data='next-myjoke')
     inline_kb.add(inline_btn)
     if media.type == 'animation':
         file = types.InputMediaAnimation(media.media_id)
