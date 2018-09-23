@@ -37,9 +37,9 @@ def add_user_chat(user, chat):
             session.close()
     else:
         session = Session()
-        user = session.query(Users).filter(Users.user_id == user.id).one()
-        user.username = user.username
-        user.name = user.full_name
+        user_current = session.query(Users).filter(Users.user_id == user.id).one()
+        user_current.username = user.username
+        user_current.name = user.full_name
         try:
             session.commit()
         finally:
