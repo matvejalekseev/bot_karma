@@ -35,6 +35,15 @@ def add_user_chat(user, chat):
             session.commit()
         finally:
             session.close()
+    else:
+        session = Session()
+        user = session.query(Users).filter(Users.user_id == user.id).one()
+        user.username = user.username
+        user.name = user.full_name
+        try:
+            session.commit()
+        finally:
+            session.close()
     if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
         karma = Karma(user_id=user.id, chat_id=chat.id)
         session = Session()
