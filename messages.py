@@ -3,6 +3,7 @@ start = 'Все доступные функции используются в о
 help = start
 error = 'Ошибка'
 joke_another_type = 'Только gif и картинки'
+wait = '⏳ Надо немного подождать'
 like = '''\
 {name} - молодец!
 Добавим в карму добра!
@@ -83,6 +84,7 @@ MESSAGES = {
         'admin_commands': admin_commands,
         'chat_list': chat_list,
         'joke_another_type': joke_another_type,
+        'wait': wait,
 }
 
 

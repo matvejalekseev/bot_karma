@@ -1,5 +1,6 @@
+from datetime import datetime
+
 import aiohttp
-import pprint
 import random
 import json
 import aiohttp
@@ -45,10 +46,10 @@ async def shutdown(dispatcher: Dispatcher):
 
 
 @dp.message_handler(commands=['myjoke'])
-async def process_joke(message: types.Message):
+async def process_myjoke(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     if message.reply_to_message and message.chat.type == 'private':
-        caption = message.text[6:]
+        caption = message.text[8:]
         file = message.reply_to_message
         if file.animation:
             session = Session()
@@ -84,20 +85,28 @@ async def process_joke(message: types.Message):
 
 
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-myjoke'))
-async def process_callback_dislike(callback_query: types.CallbackQuery):
-    Medias = Session.query(MediaIds).all()
-    i = random.randint(0, len(Medias))
-    media = Medias[i - 1]
-    inline_kb = InlineKeyboardMarkup(row_width=1)
-    inline_btn = InlineKeyboardButton('🔄', callback_data='next-myjoke')
-    inline_kb.add(inline_btn)
-    if media.type == 'animation':
-        file = types.InputMediaAnimation(media.media_id, caption=media.caption)
+async def process_callback_next_myjoke(callback_query: types.CallbackQuery):
+    if callback_query.message.edit_date:
+        lastUpdated = callback_query.message.edit_date
     else:
-        file = types.InputMediaPhoto(media.media_id, caption=media.caption)
-    await bot.edit_message_media(chat_id=callback_query.message.chat.id, media=file,
-                                 message_id=callback_query.message.message_id)
-    await bot.answer_callback_query(callback_query.id, '')
+        lastUpdated = callback_query.message.date
+    now = datetime.now()
+    if (now - lastUpdated).total_seconds() > 5:
+        Medias = Session.query(MediaIds).all()
+        i = random.randint(0, len(Medias))
+        media = Medias[i - 1]
+        inline_kb = InlineKeyboardMarkup(row_width=1)
+        inline_btn = InlineKeyboardButton('🔄', callback_data='next-myjoke')
+        inline_kb.add(inline_btn)
+        if media.type == 'animation':
+            file = types.InputMediaAnimation(media.media_id, caption=media.caption)
+        else:
+            file = types.InputMediaPhoto(media.media_id, caption=media.caption)
+        await bot.edit_message_media(chat_id=callback_query.message.chat.id, media=file,
+                                     message_id=callback_query.message.message_id, reply_markup=inline_kb)
+        await bot.answer_callback_query(callback_query.id, '')
+    else:
+        await bot.answer_callback_query(callback_query.id, MESSAGES['wait'])
 
 
 @dp.message_handler(commands=['help'], func=lambda message: message.chat.type == 'private')
@@ -119,13 +128,14 @@ async def process_start_command(message: types.Message):
 
 
 @dp.message_handler(commands=['src'])
-async def process_start_command(message: types.Message):
+async def process_src_command(message: types.Message):
     json_msg = message.as_json()
-    await message.reply("<pre>" + json.dumps(json.loads(json_msg, encoding="utf-8"), sort_keys=True, indent=4, ensure_ascii=False)
+    await message.reply("<pre>" + json.dumps(json.loads(json_msg, encoding="utf-8"), sort_keys=True, indent=4,
+                                             ensure_ascii=False)
                         + "</pre>", reply=False)
 
 @dp.message_handler(commands=['advice'])
-async def process_start_command(message: types.Message):
+async def process_advice_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     async with aiohttp.ClientSession() as session:
         async with session.get('http://fucking-great-advice.ru/api/random') as resp:
@@ -134,7 +144,7 @@ async def process_start_command(message: types.Message):
 
 
 @dp.message_handler(commands=['joke'])
-async def process_start_command(message: types.Message):
+async def process_joke_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     async with aiohttp.ClientSession() as session:
         i = random.randint(0, 2300)
@@ -149,32 +159,33 @@ async def process_start_command(message: types.Message):
 
 
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-joke'))
-async def process_callback_dislike(callback_query: types.CallbackQuery):
-    async with aiohttp.ClientSession() as session:
-        i = random.randint(0, 2300)
-        async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i), verify_ssl=False) as resp:
-            response = json.loads(await resp.text())['result']
-            j = random.randint(0, len(response) - 1)
-            inline_kb = InlineKeyboardMarkup(row_width=1)
-            inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
-            inline_kb.add(inline_btn)
-            await bot.edit_message_media(chat_id=callback_query.message.chat.id,
-                                         media=InputMediaDocument(response[j]['videoURL'],
-                                                                  caption=response[j]['description']),
-                                         message_id=callback_query.message.message_id, reply_markup=inline_kb)
+async def process_callback_next_joke(callback_query: types.CallbackQuery):
+    if callback_query.message.edit_date:
+        lastUpdated = callback_query.message.edit_date
+    else:
+        lastUpdated = callback_query.message.date
+    now = datetime.now()
+    if (now - lastUpdated).total_seconds() > 5:
+        async with aiohttp.ClientSession() as session:
+            i = random.randint(0, 2300)
+            async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i), verify_ssl=False) as resp:
+                response = json.loads(await resp.text())['result']
+                j = random.randint(0, len(response) - 1)
+                inline_kb = InlineKeyboardMarkup(row_width=1)
+                inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
+                inline_kb.add(inline_btn)
+                await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                             media=InputMediaDocument(response[j]['videoURL'],
+                                                                      caption=response[j]['description']),
+                                             message_id=callback_query.message.message_id, reply_markup=inline_kb)
 
-    await bot.answer_callback_query(callback_query.id, '')
-
-
-@dp.message_handler(commands=['src'])
-async def process_start_command(message: types.Message):
-    json_msg = message.as_json()
-    await message.reply("<pre>" + json.dumps(json.loads(json_msg, encoding="utf-8"), sort_keys=True, indent=4, ensure_ascii=False)
-                        + "</pre>", reply=False)
+        await bot.answer_callback_query(callback_query.id, '')
+    else:
+        await bot.answer_callback_query(callback_query.id, MESSAGES['wait'])
 
 
 @dp.message_handler(commands=['me'])
-async def process_start_command(message: types.Message):
+async def process_me_command(message: types.Message):
     chat_text = ''
     for user in Session.query(Karma).filter(Karma.user_id == message.from_user.id).all():
         current_chat = Session.query(Chats).filter(Chats.chat_id == user.chat_id).one()
