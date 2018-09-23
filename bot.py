@@ -92,13 +92,11 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
     inline_btn = InlineKeyboardButton('🔄', callback_data='next-myjoke')
     inline_kb.add(inline_btn)
     if media.type == 'animation':
-        file = types.InputMediaAnimation(media.media_id)
+        file = types.InputMediaAnimation(media.media_id, caption=media.caption)
     else:
-        file = types.InputMediaPhoto(media.media_id)
+        file = types.InputMediaPhoto(media.media_id, caption=media.caption)
     await bot.edit_message_media(chat_id=callback_query.message.chat.id, media=file,
                                  message_id=callback_query.message.message_id)
-    await bot.edit_message_caption(chat_id=callback_query.message.chat.id, caption=media.caption,
-                                   message_id=callback_query.message.message_id, reply_markup=inline_kb)
     await bot.answer_callback_query(callback_query.id, '')
 
 
