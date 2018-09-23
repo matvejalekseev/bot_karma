@@ -147,7 +147,7 @@ async def process_start_command(message: types.Message):
             inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
             inline_kb.add(inline_btn)
             await bot.send_document(chat_id=message.chat.id, caption=response[j]['description'],
-                                     document=response[j]['videoURL'], reply_markup=inline_kb)
+                                    document=response[j]['videoURL'], reply_markup=inline_kb)
 
 
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-joke'))
@@ -160,11 +160,11 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
             inline_kb = InlineKeyboardMarkup(row_width=1)
             inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
             inline_kb.add(inline_btn)
-            media = InputMediaDocument(response[j]['videoURL'])
-            await bot.edit_message_media(chat_id=callback_query.message.chat.id, media=media,
-                                         message_id=callback_query.message.message_id)
-            await bot.edit_message_caption(chat_id=callback_query.message.chat.id, caption=response[j]['description'],
-                                           message_id=callback_query.message.message_id, reply_markup=inline_kb)
+            await bot.edit_message_media(chat_id=callback_query.message.chat.id,
+                                         media=InputMediaDocument(response[j]['videoURL'],
+                                                                  caption=response[j]['description']),
+                                         message_id=callback_query.message.message_id, reply_markup=inline_kb)
+
     await bot.answer_callback_query(callback_query.id, '')
 
 
