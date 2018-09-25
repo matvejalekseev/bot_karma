@@ -283,7 +283,7 @@ async def process_like_command(message: types.Message):
         if count > limit_inline_btn:
             inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
             inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user.id)))
+            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-l-' + str(round(user.id)))
             inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
         await message.reply(MESSAGES['like_keyboard'], reply=False, disable_web_page_preview=True,
                             reply_markup=inline_kb)
@@ -305,7 +305,7 @@ async def process_like_command(message: types.Message):
         if count > limit_inline_btn:
             inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
             inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user.id)))
+            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-d-' + str(round(user.id)))
             inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
         await message.reply(MESSAGES['dislike_keyboard'], reply=False, disable_web_page_preview=True,
                             reply_markup=inline_kb)
@@ -366,9 +366,58 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
         await bot.answer_callback_query(callback_query.id, MESSAGES['only_admin'])
 
 
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-'))
+
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-l-'))
 async def process_callback_next(callback_query: types.CallbackQuery):
-    code = callback_query.data[5:]
+    code = callback_query.data[7:]
+    users = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
+                                             (Karma.id > code))).order_by(Karma.id).limit(limit_inline_btn).all()
+    count = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
+                                             (Karma.id <= code))).count()
+    inline_kb = InlineKeyboardMarkup(row_width=1)
+    for user in users:
+        current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+        inline_btn = InlineKeyboardButton(current_user.name, callback_data='like-' +
+                                                                           str(round(current_user.user_id)))
+        inline_kb.add(inline_btn)
+    inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-l-' + str(code))
+    inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
+    if count > limit_inline_btn:
+        inline_btn_3 = InlineKeyboardButton('>', callback_data='next-l-' + str(round(user.id)))
+    else:
+        inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
+    inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+    await bot.edit_message_reply_markup(callback_query.message.chat.id, callback_query.message.message_id,
+                                        reply_markup=inline_kb)
+
+
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('prev-l-'))
+async def process_callback_prev(callback_query: types.CallbackQuery):
+    code = callback_query.data[7:]
+    users = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
+                                             (Karma.id <= code))).order_by(Karma.id).limit(limit_inline_btn).all()
+    count = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
+                                             (Karma.id <= code))).count()
+    inline_kb = InlineKeyboardMarkup(row_width=1)
+    for user in users:
+        current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+        inline_btn = InlineKeyboardButton(current_user.name, callback_data='like-' +
+                                                                           str(round(current_user.user_id)))
+        inline_kb.add(inline_btn)
+    if count > limit_inline_btn:
+        inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-l-' + str(round(user.id)))
+    else:
+        inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
+    inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
+    inline_btn_3 = InlineKeyboardButton('>', callback_data='next-l-' + str(code))
+    inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+    await bot.edit_message_reply_markup(callback_query.message.chat.id, callback_query.message.message_id,
+                                        reply_markup=inline_kb)
+
+
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-d-'))
+async def process_callback_next(callback_query: types.CallbackQuery):
+    code = callback_query.data[7:]
     users = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
                                              (Karma.id > code))).order_by(Karma.id).limit(limit_inline_btn).all()
     count = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
@@ -379,10 +428,10 @@ async def process_callback_next(callback_query: types.CallbackQuery):
         inline_btn = InlineKeyboardButton(current_user.name, callback_data='dislike-' +
                                                                            str(round(current_user.user_id)))
         inline_kb.add(inline_btn)
-    inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(code))
+    inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-d-' + str(code))
     inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
     if count > limit_inline_btn:
-        inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user.id)))
+        inline_btn_3 = InlineKeyboardButton('>', callback_data='next-d-' + str(round(user.id)))
     else:
         inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
     inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
@@ -390,9 +439,9 @@ async def process_callback_next(callback_query: types.CallbackQuery):
                                         reply_markup=inline_kb)
 
 
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('prev-'))
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('prev-d-'))
 async def process_callback_prev(callback_query: types.CallbackQuery):
-    code = callback_query.data[5:]
+    code = callback_query.data[7:]
     users = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
                                              (Karma.id <= code))).order_by(Karma.id).limit(limit_inline_btn).all()
     count = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
@@ -404,11 +453,11 @@ async def process_callback_prev(callback_query: types.CallbackQuery):
                                                                            str(round(current_user.user_id)))
         inline_kb.add(inline_btn)
     if count > limit_inline_btn:
-        inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(round(user.id)))
+        inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-d-' + str(round(user.id)))
     else:
         inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
     inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-    inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(code))
+    inline_btn_3 = InlineKeyboardButton('>', callback_data='next-d-' + str(code))
     inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
     await bot.edit_message_reply_markup(callback_query.message.chat.id, callback_query.message.message_id,
                                         reply_markup=inline_kb)
@@ -455,21 +504,21 @@ async def process_autoleave_new_chat(message: types.Message):
     else:
         await bot.leave_chat(message.chat.id)
 
-
-@dp.message_handler(content_types=ContentType.LEFT_CHAT_MEMBER)
-async def process_kick_member(message: types.Message):
-    user = message.left_chat_member
-    chat = message.chat
-    me = await dp.bot.me
-    if not message.left_chat_member.id == me.id:
-        if Session.query(Users).filter(Users.user_id == user.id).all():
-            Session.query(Users).filter(Users.user_id == user.id).delete()
-            Session.commit()
-        if Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
-            Session.query(Users).filter(Users.user_id == user.id).delete()
-            Session.commit()
-        await bot.send_message(chat.id, MESSAGES['bye'].format(name=prettyUsername(user.full_name, user.username)),
-                               disable_web_page_preview=True)
+# Временно
+#@dp.message_handler(content_types=ContentType.LEFT_CHAT_MEMBER)
+#async def process_kick_member(message: types.Message):
+#    user = message.left_chat_member
+#    chat = message.chat
+#    me = await dp.bot.me
+#    if not message.left_chat_member.id == me.id:
+#        if Session.query(Users).filter(Users.user_id == user.id).all():
+#            Session.query(Users).filter(Users.user_id == user.id).delete()
+#            Session.commit()
+#        if Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
+#            Session.query(Users).filter(Users.user_id == user.id).delete()
+#            Session.commit()
+#        await bot.send_message(chat.id, MESSAGES['bye'].format(name=prettyUsername(user.full_name, user.username)),
+#                               disable_web_page_preview=True)
 
 
 if __name__ == '__main__':
