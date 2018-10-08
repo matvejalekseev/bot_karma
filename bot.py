@@ -79,9 +79,9 @@ async def process_myjoke(message: types.Message):
         inline_btn = InlineKeyboardButton('🔄', callback_data='next-myjoke')
         inline_kb.add(inline_btn)
         if media.type == 'photo':
-            await bot.send_photo(message.chat.id, media.media_id, caption=media.caption, reply_markup=inline_kb)
+            await bot.send_photo(message.chat.id, media.media_id, caption=media.caption)#, reply_markup=inline_kb)
         elif media.type == 'animation':
-            await bot.send_document(message.chat.id, media.media_id, caption=media.caption, reply_markup=inline_kb)
+            await bot.send_document(message.chat.id, media.media_id, caption=media.caption)#, reply_markup=inline_kb)
 
 
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-myjoke'))
