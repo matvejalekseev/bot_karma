@@ -203,6 +203,12 @@ async def process_user_list_command(message: types.Message):
         await message.reply(MESSAGES['user_list'].format(text=text), reply=False, disable_web_page_preview=True)
 
 
+@dp.message_handler(commands=['leave'])
+async def process_user_list_command(message: types.Message):
+    if message.from_user.id == MY_ID:
+        await bot.leave_chat(message.chat.id)
+
+
 @dp.message_handler(commands=['add'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_add_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
