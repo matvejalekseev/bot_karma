@@ -175,7 +175,7 @@ async def process_me_command(message: types.Message):
     chat_text = ''
     for user in Session.query(Karma).filter(Karma.user_id == message.from_user.id).all():
         current_chat = Session.query(Chats).filter(Chats.chat_id == user.chat_id).one()
-        chat_text = chat_text + MESSAGES['user_karma'].format(name=current_chat.name, karma=str(user.karma))
+        chat_text = chat_text + MESSAGES['user_karma'].format(name=current_chat.name, karma=str(user.karma)) + '\n'
     try:
         await bot.send_message(message.from_user.id, MESSAGES['chat_list'].format(text=chat_text),
                                disable_web_page_preview=True)
@@ -363,8 +363,10 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
                                                       no=str(len(users_no)),
                                                       list_yes=yes_list,
                                                       list_no=no_list)
-        await bot.edit_message_text(text, mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                    reply_markup=None)
+        if await bot.edit_message_text(text, mess.chat.id, mess.message_id, disable_web_page_preview=True,
+                                    reply_markup=None):
+            await bot.delete_message(mess.chat.id, mess.message_id)
+            await bot.send_message(mess.chat.id, text, disable_web_page_preview=True)
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
 
@@ -407,8 +409,8 @@ async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
                                                          no=str(len(users_no)),
                                                          list_yes=yes_list,
                                                          list_no=no_list)
-            await bot.edit_message_text(text, callback_query.message.chat.id, callback_query.message.message_id,
-                                            disable_web_page_preview=True)
+            await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+            await bot.send_message(callback_query.message.chat.id, text, disable_web_page_preview=True)
         else:
             text = MESSAGES['dislike_select'].format(user=user_prettyname,
                                                   likes=likes_prettyname,
@@ -461,8 +463,8 @@ async def process_callback_dislike_no(callback_query: types.CallbackQuery):
                                                          no=str(len(users_no)),
                                                          list_yes=yes_list,
                                                          list_no=no_list)
-            await bot.edit_message_text(text, callback_query.message.chat.id, callback_query.message.message_id,
-                                        disable_web_page_preview=True)
+            await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+            await bot.send_message(callback_query.message.chat.id, text, disable_web_page_preview=True)
         else:
             text = MESSAGES['dislike_select'].format(user=user_prettyname,
                                                   likes=likes_prettyname,
@@ -698,8 +700,10 @@ async def process_callback_like(callback_query: types.CallbackQuery):
                                                       no=str(len(users_no)),
                                                       list_yes=yes_list,
                                                       list_no=no_list)
-        await bot.edit_message_text(text, mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                    reply_markup=None)
+        if await bot.edit_message_text(text, mess.chat.id, mess.message_id, disable_web_page_preview=True,
+                                    reply_markup=None):
+            await bot.delete_message(mess.chat.id, mess.message_id)
+            await bot.send_message(mess.chat.id, text, disable_web_page_preview=True)
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
 
@@ -742,8 +746,8 @@ async def process_callback_like_yes(callback_query: types.CallbackQuery):
                                                          no=str(len(users_no)),
                                                          list_yes=yes_list,
                                                          list_no=no_list)
-            await bot.edit_message_text(text, callback_query.message.chat.id, callback_query.message.message_id,
-                                            disable_web_page_preview=True)
+            await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+            await bot.send_message(callback_query.message.chat.id, text, disable_web_page_preview=True)
         else:
             text = MESSAGES['like_select'].format(user=user_prettyname,
                                                   likes=likes_prettyname,
@@ -796,8 +800,8 @@ async def process_callback_like_no(callback_query: types.CallbackQuery):
                                                          no=str(len(users_no)),
                                                          list_yes=yes_list,
                                                          list_no=no_list)
-            await bot.edit_message_text(text, callback_query.message.chat.id, callback_query.message.message_id,
-                                        disable_web_page_preview=True)
+            await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
+            await bot.send_message(callback_query.message.chat.id, text, disable_web_page_preview=True)
         else:
             text = MESSAGES['like_select'].format(user=user_prettyname,
                                                   likes=likes_prettyname,
