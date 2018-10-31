@@ -27,7 +27,16 @@ MY_USERNAME = "username"
 LOG_DIRECTORY = "./logs"
 #Количество пользователей в инлайне
 LIMIT_INLINE_BTN = 3
-
+#Время до удаления в секундах
+TIME_TO_SLEEP = 5
+#Время до удаления в секундах при выборе кандидата
+TIME_TO_SELECT = 30
+#Время до завершения голосования в минутах
+TIME_TO_VOTE = 3
+#Лимит советов в день
+LIMIT_ADVICE = 3
+#Лимит шуток в день
+LIMIT_JOKE = 5
 #Настройка proxy
 proxy_url = 'socks5://ip:port'
 proxy_login = 'login'
