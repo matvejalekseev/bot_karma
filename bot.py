@@ -24,6 +24,7 @@ from db_map import Users, Chats, Karma, Votings, Votes
 
 from functions import prettyUsername, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
     new_voting, vote, result_votes
+from antimat import matfilter
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
                     level=logging.INFO, filename=LOG_FILENAME)
@@ -969,14 +970,42 @@ async def process_kick_member(message: types.Message):
                                disable_web_page_preview=True)
 
 
+@dp.edited_message_handler(func=lambda message: message.chat.type in ('group', 'supergroup'))
+async def process_edit_message(message: types.Message):
+    if message.text.lower()[:6] == 'привет' and len(message.text) in [6, 7]:
+        to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template'].format(
+            text=MESSAGES['no_privet'], time=TIME_TO_SLEEP), disable_web_page_preview=True)
+        await message.delete()
+        await asyncio.sleep(TIME_TO_SLEEP)
+        await to_del.delete()
+    elif len(matfilter(message.text)):
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['antimat'],
+                                                                        time=TIME_TO_SLEEP),
+                                     disable_web_page_preview=True)
+        await asyncio.sleep(TIME_TO_SLEEP)
+        await to_del.delete()
+    elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
+                                                                        time=TIME_TO_SLEEP),
+                                     disable_web_page_preview=True)
+        await asyncio.sleep(TIME_TO_SLEEP)
+        await to_del.delete()
+
+
 @dp.message_handler(func=lambda message: message.chat.type in ('group', 'supergroup'))
-async def process_rand_like_command(message: types.Message):
+async def process_another_message(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     i = random.randrange(500)
     if message.text.lower()[:6] == 'привет' and len(message.text) in [6, 7]:
         to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template'].format(
             text=MESSAGES['no_privet'], time=TIME_TO_SLEEP), disable_web_page_preview=True)
         await message.delete()
+        await asyncio.sleep(TIME_TO_SLEEP)
+        await to_del.delete()
+    elif len(matfilter(message.text)):
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['antimat'],
+                                                                        time=TIME_TO_SLEEP),
+                                     disable_web_page_preview=True)
         await asyncio.sleep(TIME_TO_SLEEP)
         await to_del.delete()
     elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):

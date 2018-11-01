@@ -17,6 +17,9 @@ aiogram - https://aiogram.readthedocs.io/en/latest/index.html</br>
 aiosocksy - https://pypi.org/project/aiosocksy/</br>
 ```pip3.6 install -U aiosocksy```
 
+djantimat - https://github.com/PixxxeL/djantimat</br>
+```pip3.6 install -U djantimat```
+
 # Первый запуск
 Настройка файла conf.py шаблон - conf_template.py</br>
 ```nano conf_template.py```</br>

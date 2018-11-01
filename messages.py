@@ -114,6 +114,7 @@ functional = '''\
 no_privet = '''\
 Только по делу: http://neprivet.ru/
 '''
+antimat = 'Ну давай тут ещё и бардель устроим, хватит ругаться'
 
 
 MESSAGES = {
@@ -161,6 +162,7 @@ MESSAGES = {
         'random_dislike': random_dislike,
         'functional': functional,
         'no_privet': no_privet,
+        'antimat': antimat,
 
 }
 
