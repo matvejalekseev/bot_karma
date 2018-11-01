@@ -45,7 +45,7 @@ def advices_limit_counter(id):
                     return False
             else:
                 user_current.last_advice = time_now()
-                user_current.count_advice = 0
+                user_current.count_advice = 1
                 try:
                     session.commit()
                 finally:
@@ -71,7 +71,7 @@ def jokes_limit_counter(id):
                 return False
         else:
             chat_current.last_joke = time_now()
-            chat_current.count_joke = 0
+            chat_current.count_joke = 1
             try:
                 session.commit()
             finally:
