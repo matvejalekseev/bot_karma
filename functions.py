@@ -34,7 +34,7 @@ def advices_limit_counter(id):
             session = Session()
             user_current = session.query(Users).filter(Users.user_id == id).one()
             if user_current.last_advice.date() == date_now():
-                if user_current.count_advice == LIMIT_ADVICE:
+                if user_current.count_advice >= LIMIT_ADVICE:
                     return True
                 else:
                     user_current.count_advice += 1
@@ -60,7 +60,7 @@ def jokes_limit_counter(id):
         session = Session()
         chat_current = session.query(Chats).filter(Chats.chat_id == id).one()
         if chat_current.last_joke.date() == date_now():
-            if chat_current.count_joke == LIMIT_JOKE:
+            if chat_current.count_joke >= LIMIT_JOKE:
                 return True
             else:
                 chat_current.count_joke += 1
