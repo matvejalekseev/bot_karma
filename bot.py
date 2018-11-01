@@ -972,27 +972,40 @@ async def process_kick_member(message: types.Message):
 @dp.message_handler(func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_rand_like_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    i = random.randrange(1000)
-    if i == 1:
-        session = Session()
-        karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
-                                                 (Karma.chat_id == message.chat.id))).one()
-        karma.karma += 1
-        try:
-            session.commit()
-        finally:
-            session.close()
-        await message.reply(MESSAGES['random_like'], disable_web_page_preview=True)
-    elif i == 2:
-        session = Session()
-        karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
-                                                 (Karma.chat_id == message.chat.id))).one()
-        karma.karma -= 1
-        try:
-            session.commit()
-        finally:
-            session.close()
-        await message.reply(MESSAGES['random_dislike'], disable_web_page_preview=True)
+    i = random.randrange(500)
+    if message.text.lower()[:6] == 'привет' and len(message.text) in [6, 7]:
+        to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template'].format(
+            text=MESSAGES['no_privet'], time=TIME_TO_SLEEP), disable_web_page_preview=True)
+        await message.delete()
+        await asyncio.sleep(TIME_TO_SLEEP)
+        await to_del.delete()
+    elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
+                                                                        time=TIME_TO_SLEEP),
+                                     disable_web_page_preview=True)
+        await asyncio.sleep(TIME_TO_SLEEP)
+        await to_del.delete()
+    else:
+        if i == 1:
+            session = Session()
+            karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
+                                                     (Karma.chat_id == message.chat.id))).one()
+            karma.karma += 1
+            try:
+                session.commit()
+            finally:
+                session.close()
+            await message.reply(MESSAGES['random_like'], disable_web_page_preview=True)
+        elif i == 2:
+            session = Session()
+            karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
+                                                     (Karma.chat_id == message.chat.id))).one()
+            karma.karma -= 1
+            try:
+                session.commit()
+            finally:
+                session.close()
+            await message.reply(MESSAGES['random_dislike'], disable_web_page_preview=True)
 
 
 if __name__ == '__main__':

@@ -108,6 +108,12 @@ admin_commands = '''\
 /admin_delete - Разжаловать админа, просто сделай reply сообщения пользователя, которого хочешь разжаловать, отправив команду /admin_delete@{username}'''
 random_like = 'Вот хорошо сказал, держи лайк!'
 random_dislike = 'Сначала думаешь, потом говоришь, сегодня дизлайк, друг...'
+functional = '''\
+Ну вот тут ты не прав, может всё таки "<a href="http://telegra.ph/Function-06-01">Функциональность</a>"?
+'''
+no_privet = '''\
+Только по делу: http://neprivet.ru/
+'''
 
 
 MESSAGES = {
@@ -153,6 +159,8 @@ MESSAGES = {
         'not_for_me': not_for_me,
         'random_like': random_like,
         'random_dislike': random_dislike,
+        'functional': functional,
+        'no_privet': no_privet,
 
 }
 
