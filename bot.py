@@ -972,7 +972,7 @@ async def process_kick_member(message: types.Message):
 
 @dp.edited_message_handler(func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_edit_message(message: types.Message):
-    if message.text.lower()[:6] == 'привет' and len(message.text) in [6, 7]:
+    if re.findall(r'\w+',  message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
         to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template'].format(
             text=MESSAGES['no_privet'], time=TIME_TO_SLEEP), disable_web_page_preview=True)
         await message.delete()
@@ -996,7 +996,7 @@ async def process_edit_message(message: types.Message):
 async def process_another_message(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     i = random.randrange(500)
-    if message.text.lower()[:6] == 'привет' and len(message.text) in [6, 7]:
+    if re.findall(r'\w+', message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
         to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template'].format(
             text=MESSAGES['no_privet'], time=TIME_TO_SLEEP), disable_web_page_preview=True)
         await message.delete()
