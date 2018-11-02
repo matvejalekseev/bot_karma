@@ -970,6 +970,30 @@ async def process_kick_member(message: types.Message):
                                disable_web_page_preview=True)
 
 
+@dp.message_handler(commands=['restrict'], func=lambda message: message.chat.type in ('group', 'supergroup'))
+async def process_restrict_command(message: types.Message):
+    if message.reply_to_message.from_user.id:
+        await bot.restrict_chat_member(message.chat.id,
+                                       message.reply_to_message.from_user.id,
+                                       can_send_messages=False,
+                                       can_add_web_page_previews=False,
+                                       can_send_media_messages=False,
+                                       can_send_other_messages=False)
+        to_del = await message.reply_to_message.reply(MESSAGES['delete_template'].format(
+            text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
+            disable_web_page_preview=True)
+        await message.delete()
+        await asyncio.sleep(TIME_TO_SLEEP)
+        await to_del.delete()
+        await asyncio.sleep(TIME_TO_SELECT-TIME_TO_SLEEP)
+        await bot.restrict_chat_member(message.chat.id,
+                                       message.reply_to_message.from_user.id,
+                                       can_send_messages=True,
+                                       can_add_web_page_previews=True,
+                                       can_send_media_messages=True,
+                                       can_send_other_messages=True)
+
+
 @dp.edited_message_handler(func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_edit_message(message: types.Message):
     if re.findall(r'\w+',  message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:

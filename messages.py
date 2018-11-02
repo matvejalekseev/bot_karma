@@ -115,6 +115,7 @@ no_privet = '''\
 Только по делу: http://neprivet.ru/
 '''
 antimat = 'Ну давай тут ещё и бордель устроим, хватит ругаться'
+ban_user = 'Тсссс, давай помолчим всего то {time} секунд...'
 
 
 MESSAGES = {
@@ -163,6 +164,7 @@ MESSAGES = {
         'functional': functional,
         'no_privet': no_privet,
         'antimat': antimat,
+        'ban_user': ban_user,
 
 }
 
