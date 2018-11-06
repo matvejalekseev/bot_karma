@@ -23,7 +23,7 @@ from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID,
 from db_map import Users, Chats, Karma, Votings, Votes
 
 from functions import prettyUsername, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
-    new_voting, vote, result_votes
+    new_voting, vote, result_votes, karma_in_chat_text, current_state_vote
 from antimat import matfilter
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
@@ -213,6 +213,7 @@ async def process_user_list_command(message: types.Message):
 @dp.message_handler(commands=['add'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_add_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
+    await message.delete()
 
 
 @dp.message_handler(commands=['dislike'], func=lambda message: message.chat.type in ('group', 'supergroup'))
@@ -228,61 +229,15 @@ async def process_dislike_command(message: types.Message):
         else:
             add_user_chat(message.reply_to_message.from_user, message.chat)
             vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, 0, message.chat.id)
-            user_prettyname = prettyUsername(message.from_user.full_name, message.from_user.username)
-            likes = Session.query(Users).filter(Users.user_id == message.reply_to_message.from_user.id).one()
-            likes_prettyname = prettyUsername(likes.name, likes.username)
-            users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-            users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-            no_list = ''
-            for user in users_no:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-            yes_list = ''
-            for user in users_yes:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-            inline_kb = InlineKeyboardMarkup(row_width=1)
-            inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)),
-                                                  callback_data='yes-dislike-' + str(vote_id))
-            inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-dislike-' + str(vote_id))
-            inline_kb.add(inline_btn_yes, inline_btn_no)
-            await message.delete()
-            text = MESSAGES['dislike_select'].format(user=user_prettyname,
-                                                     likes=likes_prettyname,
-                                                     yes=str(len(users_yes)),
-                                                     no=str(len(users_no)),
-                                                     list_yes=yes_list,
-                                                     list_no=no_list,
-                                                     time=TIME_TO_VOTE)
-            mess = await message.reply(text, reply=False, disable_web_page_preview=True,
-                                                      reply_markup=inline_kb)
+            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+            mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
+                                       reply_markup=mess_inner[1])
             await asyncio.sleep(TIME_TO_VOTE * 60)
-            likes = Session.query(Users).filter(Users.user_id == message.reply_to_message.from_user.id).one()
-            likes_prettyname = prettyUsername(likes.name, likes.username)
-            users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-            users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-            no_list = ''
-            for user in users_no:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-            yes_list = ''
-            for user in users_yes:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-            if result_votes(vote_id):
-                text = MESSAGES['dislike_result_yes'].format(likes=likes_prettyname,
-                                                             yes=str(len(users_yes)),
-                                                             no=str(len(users_no)),
-                                                             list_yes=yes_list,
-                                                             list_no=no_list)
-            else:
-                text = MESSAGES['dislike_result_no'].format(likes=likes_prettyname,
-                                                            yes=str(len(users_yes)),
-                                                            no=str(len(users_no)),
-                                                            list_yes=yes_list,
-                                                            list_no=no_list)
-            await bot.edit_message_text(text, mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                        reply_markup=None)
+            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+            if await bot.edit_message_text(mess_inner[0], mess.chat.id, mess.message_id, disable_web_page_preview=True,
+                                           reply_markup=mess_inner[1]):
+                await bot.delete_message(mess.chat.id, mess.message_id)
+                await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
     else:
         users = Session.query(Karma).filter(and_((Karma.chat_id == message.chat.id), (Karma.user_id != message.from_user.id)))\
             .order_by(Karma.id).limit(limit_inline_btn).all()
@@ -312,176 +267,116 @@ async def process_dislike_command(message: types.Message):
             pass
 
 
+@dp.message_handler(commands=['like'], func=lambda message: message.chat.type in ('group', 'supergroup'))
+async def process_like_command(message: types.Message):
+    add_user_chat(message.from_user, message.chat)
+    if message.reply_to_message:
+        if message.reply_to_message.from_user.id == message.from_user.id:
+            to_del = await message.reply(MESSAGES['delete_template'].format(
+                text=MESSAGES['not_for_self'], time=TIME_TO_SLEEP), reply=False)
+            await message.delete()
+            await asyncio.sleep(TIME_TO_SLEEP)
+            await to_del.delete()
+        else:
+            add_user_chat(message.reply_to_message.from_user, message.chat)
+            vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, 1, message.chat.id)
+            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+            mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
+                                                      reply_markup=mess_inner[1])
+            await asyncio.sleep(TIME_TO_VOTE * 60)
+            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+            if await bot.edit_message_text(mess_inner[0], mess.chat.id, mess.message_id, disable_web_page_preview=True,
+                                           reply_markup=mess_inner[1]):
+                await bot.delete_message(mess.chat.id, mess.message_id)
+                await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
+    else:
+        users = Session.query(Karma).filter(and_((Karma.chat_id == message.chat.id),
+                                                 (Karma.user_id != message.from_user.id)))\
+            .order_by(Karma.id).limit(limit_inline_btn).all()
+        inline_kb = InlineKeyboardMarkup(row_width=1)
+        count = Session.query(Karma).filter(and_((Karma.chat_id == message.chat.id),
+                                                 (Karma.user_id != message.from_user.id))).count()
+        for user in users:
+            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+            inline_btn = InlineKeyboardButton(current_user.name, callback_data='like-' + str(round(message.from_user.id))
+                                                                               + '-' + str(round(current_user.user_id)))
+            inline_kb.add(inline_btn)
+        if count > limit_inline_btn:
+            inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
+            inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
+            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-l-' + str(round(message.from_user.id))
+                                                                               + '-' + str(round(user.id)))
+            inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['like_keyboard'].format(
+            name=prettyUsername(message.from_user.full_name, message.from_user.username)),
+                                                                        time=TIME_TO_SELECT),
+                                     reply=False, disable_web_page_preview=True, reply_markup=inline_kb)
+        await message.delete()
+        await asyncio.sleep(TIME_TO_SELECT)
+        try:
+            await to_del.delete()
+        except:
+            pass
+
+
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('like-'))
+async def process_callback_like(callback_query: types.CallbackQuery):
+    user = re.findall(r'\d+', callback_query.data)[0]
+    if str(callback_query.from_user.id) == user:
+        code = re.findall(r'\d+', callback_query.data)[1]
+        vote_id = new_voting(callback_query.from_user.id, code, 1, callback_query.message.chat.id)
+        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        mess = await callback_query.message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
+                                                  reply_markup=mess_inner[1])
+        await asyncio.sleep(TIME_TO_VOTE * 60)
+        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        if await bot.edit_message_text(mess_inner[0], mess.chat.id, mess.message_id, disable_web_page_preview=True,
+                                       reply_markup=mess_inner[1]):
+            await bot.delete_message(mess.chat.id, mess.message_id)
+            await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
+    else:
+        await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
+
+
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('dislike-'))
 async def process_callback_dislike(callback_query: types.CallbackQuery):
     user = re.findall(r'\d+', callback_query.data)[0]
     if str(callback_query.from_user.id) == user:
         code = re.findall(r'\d+', callback_query.data)[1]
         vote_id = new_voting(callback_query.from_user.id, code, 0, callback_query.message.chat.id)
-        user_prettyname = prettyUsername(callback_query.from_user.full_name, callback_query.from_user.username)
-        likes = Session.query(Users).filter(Users.user_id == code).one()
-        likes_prettyname = prettyUsername(likes.name, likes.username)
-        users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-        users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-        no_list = ''
-        for user in users_no:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        yes_list = ''
-        for user in users_yes:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)), callback_data='yes-dislike-' + str(vote_id))
-        inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-dislike-' + str(vote_id))
-        inline_kb.add(inline_btn_yes, inline_btn_no)
-        await callback_query.message.delete()
-        text = MESSAGES['dislike_select'].format(user=user_prettyname,
-                                              likes=likes_prettyname,
-                                              yes=str(len(users_yes)),
-                                              no=str(len(users_no)),
-                                              list_yes=yes_list,
-                                              list_no=no_list,
-                                              time=TIME_TO_VOTE)
-        mess = await callback_query.message.reply(text, reply=False, disable_web_page_preview=True,
-                                                  reply_markup=inline_kb)
-        await asyncio.sleep(TIME_TO_VOTE*60)
-        likes = Session.query(Users).filter(Users.user_id == code).one()
-        likes_prettyname = prettyUsername(likes.name, likes.username)
-        users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-        users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-        no_list = ''
-        for user in users_no:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        yes_list = ''
-        for user in users_yes:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        if result_votes(vote_id):
-            text = MESSAGES['dislike_result_yes'].format(likes=likes_prettyname,
-                                                  yes=str(len(users_yes)),
-                                                  no=str(len(users_no)),
-                                                  list_yes=yes_list,
-                                                  list_no=no_list)
-        else:
-            text = MESSAGES['dislike_result_no'].format(likes=likes_prettyname,
-                                                      yes=str(len(users_yes)),
-                                                      no=str(len(users_no)),
-                                                      list_yes=yes_list,
-                                                      list_no=no_list)
-        if await bot.edit_message_text(text, mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                    reply_markup=None):
+        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        mess = await callback_query.message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
+                                                  reply_markup=mess_inner[1])
+        await asyncio.sleep(TIME_TO_VOTE * 60)
+        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        if await bot.edit_message_text(mess_inner[0], mess.chat.id, mess.message_id, disable_web_page_preview=True,
+                                       reply_markup=mess_inner[1]):
             await bot.delete_message(mess.chat.id, mess.message_id)
-            await bot.send_message(mess.chat.id, text, disable_web_page_preview=True)
+            await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
 
 
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('yes-dislike-'))
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('yes-'))
 async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
     add_user_chat(callback_query.from_user, callback_query.message.chat)
     vote_id = int(re.findall(r'\d+', callback_query.data)[0])
     if vote(callback_query.from_user.id, vote_id, 1):
-        code = Session.query(Votings).filter(Votings.id == vote_id).one()
-        user = Session.query(Users).filter(Users.user_id == code.init_user_id).one()
-        user_prettyname = prettyUsername(user.name, user.username)
-        likes = Session.query(Users).filter(Users.user_id == code.candidate_user_id).one()
-        likes_prettyname = prettyUsername(likes.name, likes.username)
-        users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-        users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-        count_user_in_chat = Session.query(Karma).filter(Karma.chat_id == callback_query.message.chat.id).count()
-        no_list = ''
-        for user in users_no:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        yes_list = ''
-        for user in users_yes:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)), callback_data='yes-dislike-' + str(vote_id))
-        inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-dislike-' + str(vote_id))
-        inline_kb.add(inline_btn_yes, inline_btn_no)
-        if count_user_in_chat == len(users_yes) + len(users_no) + 1:
-            if result_votes(vote_id):
-                text = MESSAGES['dislike_result_yes'].format(likes=likes_prettyname,
-                                                          yes=str(len(users_yes)),
-                                                          no=str(len(users_no)),
-                                                          list_yes=yes_list,
-                                                          list_no=no_list)
-            else:
-                text = MESSAGES['dislike_result_no'].format(likes=likes_prettyname,
-                                                         yes=str(len(users_yes)),
-                                                         no=str(len(users_no)),
-                                                         list_yes=yes_list,
-                                                         list_no=no_list)
-            await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
-            await bot.send_message(callback_query.message.chat.id, text, disable_web_page_preview=True)
-        else:
-            text = MESSAGES['dislike_select'].format(user=user_prettyname,
-                                                  likes=likes_prettyname,
-                                                  yes=str(len(users_yes)),
-                                                  no=str(len(users_no)),
-                                                  list_yes=yes_list,
-                                                  list_no=no_list,
-                                                  time=TIME_TO_VOTE)
-            await bot.edit_message_text(text, callback_query.message.chat.id, callback_query.message.message_id,
-                                    disable_web_page_preview=True, reply_markup=inline_kb)
+        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        await bot.edit_message_text(mess_inner[0], callback_query.message.chat.id, callback_query.message.message_id,
+                                    disable_web_page_preview=True, reply_markup=mess_inner[1])
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['only_one_vote'])
 
 
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('no-dislike-'))
-async def process_callback_dislike_no(callback_query: types.CallbackQuery):
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('no-'))
+async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
     add_user_chat(callback_query.from_user, callback_query.message.chat)
     vote_id = int(re.findall(r'\d+', callback_query.data)[0])
-    if vote(callback_query.from_user.id, vote_id, 0):
-        code = Session.query(Votings).filter(Votings.id == vote_id).one()
-        user = Session.query(Users).filter(Users.user_id == code.init_user_id).one()
-        user_prettyname = prettyUsername(user.name, user.username)
-        likes = Session.query(Users).filter(Users.user_id == code.candidate_user_id).one()
-        likes_prettyname = prettyUsername(likes.name, likes.username)
-        users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-        users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-        count_user_in_chat = Session.query(Karma).filter(Karma.chat_id == callback_query.message.chat.id).count()
-        no_list = ''
-        for user in users_no:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        yes_list = ''
-        for user in users_yes:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)), callback_data='yes-dislike-' + str(vote_id))
-        inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-dislike-' + str(vote_id))
-        inline_kb.add(inline_btn_yes, inline_btn_no)
-        if count_user_in_chat == len(users_yes) + len(users_no) + 1:
-            if result_votes(vote_id):
-                text = MESSAGES['dislike_result_yes'].format(likes=likes_prettyname,
-                                                          yes=str(len(users_yes)),
-                                                          no=str(len(users_no)),
-                                                          list_yes=yes_list,
-                                                          list_no=no_list)
-            else:
-                text = MESSAGES['dislike_result_no'].format(likes=likes_prettyname,
-                                                         yes=str(len(users_yes)),
-                                                         no=str(len(users_no)),
-                                                         list_yes=yes_list,
-                                                         list_no=no_list)
-            await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
-            await bot.send_message(callback_query.message.chat.id, text, disable_web_page_preview=True)
-        else:
-            text = MESSAGES['dislike_select'].format(user=user_prettyname,
-                                                  likes=likes_prettyname,
-                                                  yes=str(len(users_yes)),
-                                                  no=str(len(users_no)),
-                                                  list_yes=yes_list,
-                                                  list_no=no_list,
-                                                  time=TIME_TO_VOTE)
-            await bot.edit_message_text(text, callback_query.message.chat.id, callback_query.message.message_id,
-                                    disable_web_page_preview=True, reply_markup=inline_kb)
+    if vote(callback_query.from_user.id, vote_id, 1):
+        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        await bot.edit_message_text(mess_inner[0], callback_query.message.chat.id, callback_query.message.message_id,
+                                    disable_web_page_preview=True, reply_markup=mess_inner[1])
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['only_one_vote'])
 
@@ -549,278 +444,6 @@ async def process_callback_prev(callback_query: types.CallbackQuery):
                                             reply_markup=inline_kb)
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
-
-
-@dp.message_handler(commands=['like'], func=lambda message: message.chat.type in ('group', 'supergroup'))
-async def process_like_command(message: types.Message):
-    add_user_chat(message.from_user, message.chat)
-    if message.reply_to_message:
-        if message.reply_to_message.from_user.id == message.from_user.id:
-            to_del = await message.reply(MESSAGES['delete_template'].format(
-                text=MESSAGES['not_for_self'], time=TIME_TO_SLEEP), reply=False)
-            await message.delete()
-            await asyncio.sleep(TIME_TO_SLEEP)
-            await to_del.delete()
-        else:
-            add_user_chat(message.reply_to_message.from_user, message.chat)
-            vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, 0, message.chat.id)
-            user_prettyname = prettyUsername(message.from_user.full_name, message.from_user.username)
-            likes = Session.query(Users).filter(Users.user_id == message.reply_to_message.from_user.id).one()
-            likes_prettyname = prettyUsername(likes.name, likes.username)
-            users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-            users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-            no_list = ''
-            for user in users_no:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-            yes_list = ''
-            for user in users_yes:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-            inline_kb = InlineKeyboardMarkup(row_width=1)
-            inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)),
-                                                  callback_data='yes-like-' + str(vote_id))
-            inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-like-' + str(vote_id))
-            inline_kb.add(inline_btn_yes, inline_btn_no)
-            await message.delete()
-            text = MESSAGES['like_select'].format(user=user_prettyname,
-                                                     likes=likes_prettyname,
-                                                     yes=str(len(users_yes)),
-                                                     no=str(len(users_no)),
-                                                     list_yes=yes_list,
-                                                     list_no=no_list,
-                                                     time=TIME_TO_VOTE)
-            mess = await message.reply(text, reply=False, disable_web_page_preview=True,
-                                                      reply_markup=inline_kb)
-            await asyncio.sleep(TIME_TO_VOTE * 60)
-            likes = Session.query(Users).filter(Users.user_id == message.reply_to_message.from_user.id).one()
-            likes_prettyname = prettyUsername(likes.name, likes.username)
-            users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-            users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-            no_list = ''
-            for user in users_no:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-            yes_list = ''
-            for user in users_yes:
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-            if result_votes(vote_id):
-                text = MESSAGES['like_result_yes'].format(likes=likes_prettyname,
-                                                             yes=str(len(users_yes)),
-                                                             no=str(len(users_no)),
-                                                             list_yes=yes_list,
-                                                             list_no=no_list)
-            else:
-                text = MESSAGES['like_result_no'].format(likes=likes_prettyname,
-                                                            yes=str(len(users_yes)),
-                                                            no=str(len(users_no)),
-                                                            list_yes=yes_list,
-                                                            list_no=no_list)
-            await bot.edit_message_text(text, mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                        reply_markup=None)
-    else:
-        users = Session.query(Karma).filter(and_((Karma.chat_id == message.chat.id),
-                                                 (Karma.user_id != message.from_user.id)))\
-            .order_by(Karma.id).limit(limit_inline_btn).all()
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        count = Session.query(Karma).filter(and_((Karma.chat_id == message.chat.id),
-                                                 (Karma.user_id != message.from_user.id))).count()
-        for user in users:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            inline_btn = InlineKeyboardButton(current_user.name, callback_data='like-' + str(round(message.from_user.id))
-                                                                               + '-' + str(round(current_user.user_id)))
-            inline_kb.add(inline_btn)
-        if count > limit_inline_btn:
-            inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
-            inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-l-' + str(round(message.from_user.id))
-                                                                               + '-' + str(round(user.id)))
-            inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
-        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['like_keyboard'].format(
-            name=prettyUsername(message.from_user.full_name, message.from_user.username)),
-                                                                        time=TIME_TO_SELECT),
-                                     reply=False, disable_web_page_preview=True, reply_markup=inline_kb)
-        await message.delete()
-        await asyncio.sleep(TIME_TO_SELECT)
-        try:
-            await to_del.delete()
-        except:
-            pass
-
-
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('like-'))
-async def process_callback_like(callback_query: types.CallbackQuery):
-    user = re.findall(r'\d+', callback_query.data)[0]
-    if str(callback_query.from_user.id) == user:
-        code = re.findall(r'\d+', callback_query.data)[1]
-        vote_id = new_voting(callback_query.from_user.id, code, 1, callback_query.message.chat.id)
-        user_prettyname = prettyUsername(callback_query.from_user.full_name, callback_query.from_user.username)
-        likes = Session.query(Users).filter(Users.user_id == code).one()
-        likes_prettyname = prettyUsername(likes.name, likes.username)
-        users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-        users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-        no_list = ''
-        for user in users_no:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        yes_list = ''
-        for user in users_yes:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)), callback_data='yes-like-' + str(vote_id))
-        inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-like-' + str(vote_id))
-        inline_kb.add(inline_btn_yes, inline_btn_no)
-        await callback_query.message.delete()
-        text = MESSAGES['like_select'].format(user=user_prettyname,
-                                              likes=likes_prettyname,
-                                              yes=str(len(users_yes)),
-                                              no=str(len(users_no)),
-                                              list_yes=yes_list,
-                                              list_no=no_list,
-                                              time=TIME_TO_VOTE)
-        mess = await callback_query.message.reply(text, reply=False, disable_web_page_preview=True,
-                                                  reply_markup=inline_kb)
-        await asyncio.sleep(TIME_TO_VOTE*60)
-        likes = Session.query(Users).filter(Users.user_id == code).one()
-        likes_prettyname = prettyUsername(likes.name, likes.username)
-        users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-        users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-        no_list = ''
-        for user in users_no:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        yes_list = ''
-        for user in users_yes:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        if result_votes(vote_id):
-            text = MESSAGES['like_result_yes'].format(likes=likes_prettyname,
-                                                  yes=str(len(users_yes)),
-                                                  no=str(len(users_no)),
-                                                  list_yes=yes_list,
-                                                  list_no=no_list)
-        else:
-            text = MESSAGES['like_result_no'].format(likes=likes_prettyname,
-                                                      yes=str(len(users_yes)),
-                                                      no=str(len(users_no)),
-                                                      list_yes=yes_list,
-                                                      list_no=no_list)
-        if await bot.edit_message_text(text, mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                    reply_markup=None):
-            await bot.delete_message(mess.chat.id, mess.message_id)
-            await bot.send_message(mess.chat.id, text, disable_web_page_preview=True)
-    else:
-        await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
-
-
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('yes-like-'))
-async def process_callback_like_yes(callback_query: types.CallbackQuery):
-    add_user_chat(callback_query.from_user, callback_query.message.chat)
-    vote_id = int(re.findall(r'\d+', callback_query.data)[0])
-    if vote(callback_query.from_user.id, vote_id, 1):
-        code = Session.query(Votings).filter(Votings.id == vote_id).one()
-        user = Session.query(Users).filter(Users.user_id == code.init_user_id).one()
-        user_prettyname = prettyUsername(user.name, user.username)
-        likes = Session.query(Users).filter(Users.user_id == code.candidate_user_id).one()
-        likes_prettyname = prettyUsername(likes.name, likes.username)
-        users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-        users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-        count_user_in_chat = Session.query(Karma).filter(Karma.chat_id == callback_query.message.chat.id).count()
-        no_list = ''
-        for user in users_no:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        yes_list = ''
-        for user in users_yes:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)), callback_data='yes-like-' + str(vote_id))
-        inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-like-' + str(vote_id))
-        inline_kb.add(inline_btn_yes, inline_btn_no)
-        if count_user_in_chat == len(users_yes) + len(users_no) + 1:
-            if result_votes(vote_id):
-                text = MESSAGES['like_result_yes'].format(likes=likes_prettyname,
-                                                          yes=str(len(users_yes)),
-                                                          no=str(len(users_no)),
-                                                          list_yes=yes_list,
-                                                          list_no=no_list)
-            else:
-                text = MESSAGES['like_result_no'].format(likes=likes_prettyname,
-                                                         yes=str(len(users_yes)),
-                                                         no=str(len(users_no)),
-                                                         list_yes=yes_list,
-                                                         list_no=no_list)
-            await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
-            await bot.send_message(callback_query.message.chat.id, text, disable_web_page_preview=True)
-        else:
-            text = MESSAGES['like_select'].format(user=user_prettyname,
-                                                  likes=likes_prettyname,
-                                                  yes=str(len(users_yes)),
-                                                  no=str(len(users_no)),
-                                                  list_yes=yes_list,
-                                                  list_no=no_list,
-                                                  time=TIME_TO_VOTE)
-            await bot.edit_message_text(text, callback_query.message.chat.id, callback_query.message.message_id,
-                                    disable_web_page_preview=True, reply_markup=inline_kb)
-    else:
-        await bot.answer_callback_query(callback_query.id, MESSAGES['only_one_vote'])
-
-
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('no-like-'))
-async def process_callback_like_no(callback_query: types.CallbackQuery):
-    add_user_chat(callback_query.from_user, callback_query.message.chat)
-    vote_id = int(re.findall(r'\d+', callback_query.data)[0])
-    if vote(callback_query.from_user.id, vote_id, 0):
-        code = Session.query(Votings).filter(Votings.id == vote_id).one()
-        user = Session.query(Users).filter(Users.user_id == code.init_user_id).one()
-        user_prettyname = prettyUsername(user.name, user.username)
-        likes = Session.query(Users).filter(Users.user_id == code.candidate_user_id).one()
-        likes_prettyname = prettyUsername(likes.name, likes.username)
-        users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
-        users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
-        count_user_in_chat = Session.query(Karma).filter(Karma.chat_id == callback_query.message.chat.id).count()
-        no_list = ''
-        for user in users_no:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        yes_list = ''
-        for user in users_yes:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)), callback_data='yes-like-' + str(vote_id))
-        inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-like-' + str(vote_id))
-        inline_kb.add(inline_btn_yes, inline_btn_no)
-        if count_user_in_chat == len(users_yes) + len(users_no) + 1:
-            if result_votes(vote_id):
-                text = MESSAGES['like_result_yes'].format(likes=likes_prettyname,
-                                                          yes=str(len(users_yes)),
-                                                          no=str(len(users_no)),
-                                                          list_yes=yes_list,
-                                                          list_no=no_list)
-            else:
-                text = MESSAGES['like_result_no'].format(likes=likes_prettyname,
-                                                         yes=str(len(users_yes)),
-                                                         no=str(len(users_no)),
-                                                         list_yes=yes_list,
-                                                         list_no=no_list)
-            await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
-            await bot.send_message(callback_query.message.chat.id, text, disable_web_page_preview=True)
-        else:
-            text = MESSAGES['like_select'].format(user=user_prettyname,
-                                                  likes=likes_prettyname,
-                                                  yes=str(len(users_yes)),
-                                                  no=str(len(users_no)),
-                                                  list_yes=yes_list,
-                                                  list_no=no_list,
-                                                  time=TIME_TO_VOTE)
-            await bot.edit_message_text(text, callback_query.message.chat.id, callback_query.message.message_id,
-                                    disable_web_page_preview=True, reply_markup=inline_kb)
-    else:
-        await bot.answer_callback_query(callback_query.id, MESSAGES['only_one_vote'])
 
 
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-l-'))
@@ -891,24 +514,8 @@ async def process_callback_prev(callback_query: types.CallbackQuery):
 @dp.message_handler(commands=['karma'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    text = ''
-    i = 1
-    count = Session.query(Karma).filter(Karma.chat_id == message.chat.id).count()
-    for karma in Session.query(Karma).filter(Karma.chat_id == message.chat.id).order_by(Karma.karma.desc()).all():
-        user = Session.query(Users).filter(Users.user_id == karma.user_id).one()
-        if i == 1:
-            text = text + '\n👑 ' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
-                                                    karma=str(karma.karma))
-        elif i == count:
-            text = text + '\n💩 ' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
-                                                               karma=str(karma.karma))
-        else:
-            text = text + '\n' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
-                                                               karma=str(karma.karma))
-        i += 1
-    to_del = await message.reply(MESSAGES['delete_template'].format(
-        text=MESSAGES['karma'].format(name=message.chat.title, text=text), time=TIME_TO_SELECT), reply=False,
-        disable_web_page_preview=True)
+    to_del = await message.reply(karma_in_chat_text(message.chat.id, TIME_TO_SELECT), reply=False,
+                                 disable_web_page_preview=True)
     await message.delete()
     await asyncio.sleep(TIME_TO_SELECT)
     await to_del.delete()

@@ -1,3 +1,5 @@
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 from messages import MESSAGES
 from sqlalchemy import create_engine, and_, func
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -169,7 +171,7 @@ def add_user_chat(user, chat):
             session.close()
 
 
-def prettyUsername(n,un):
+def prettyUsername(n, un):
     try:
         if is_str(un):
             user = '<a href="https://t.me/' + un + '">' + n + '</a>'
@@ -178,3 +180,126 @@ def prettyUsername(n,un):
         return user
     except:
         return MESSAGES['error']
+
+
+def pagination_voting(code, chat_id, user_id, limit, type):
+    users = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
+                                             (Karma.user_id != user_id),
+                                             (Karma.id > code))).order_by(Karma.id).limit(limit).all()
+    count = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
+                                             (Karma.user_id != user_id),
+                                             (Karma.id <= code))).count()
+    inline_kb = InlineKeyboardMarkup(row_width=1)
+    for user in users:
+        current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+        inline_btn = InlineKeyboardButton(current_user.name,
+                                          callback_data='dislike-' + str(round(user_id)) + '-'
+                                                        + str(round(current_user.user_id)))
+        inline_kb.add(inline_btn)
+    inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(round(user_id)) + '-' + str(code))
+    inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
+    if count > limit:
+        inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user_id)) + '-'
+                                                               + str(round(user.id)))
+    else:
+        inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
+    inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+
+
+def current_state_vote(time, vote_id):
+    voting = Session.query(Votings).filter(Votings.id == vote_id).one()
+
+    user = Session.query(Users).filter(Users.user_id == voting.init_user_id).one()
+    user_prettyname = prettyUsername(user.name, user.username)
+
+    likes = Session.query(Users).filter(Users.user_id == voting.candidate_user_id).one()
+    likes_prettyname = prettyUsername(likes.name, likes.username)
+
+    users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
+    users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
+    yes_list = ''
+    for user in users_yes:
+        current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+        yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
+
+    count_user_in_chat = Session.query(Karma).filter(Karma.chat_id == voting.chat_id).count()
+    no_list = ''
+    for user in users_no:
+        current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+        no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
+
+    inline_kb = InlineKeyboardMarkup(row_width=1)
+    inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)), callback_data='yes-' + str(vote_id))
+    inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-' + str(vote_id))
+    inline_kb.add(inline_btn_yes, inline_btn_no)
+
+    if voting.type == 1:
+        if count_user_in_chat == len(users_yes) + len(users_no) + 1:
+            if result_votes(vote_id):
+                text = MESSAGES['like_result_yes'].format(likes=likes_prettyname,
+                                                          yes=str(len(users_yes)),
+                                                          no=str(len(users_no)),
+                                                          list_yes=yes_list,
+                                                          list_no=no_list)
+            else:
+                text = MESSAGES['like_result_no'].format(likes=likes_prettyname,
+                                                         yes=str(len(users_yes)),
+                                                         no=str(len(users_no)),
+                                                         list_yes=yes_list,
+                                                         list_no=no_list)
+            return text, None
+        else:
+            text = MESSAGES['like_select'].format(user=user_prettyname,
+                                                  likes=likes_prettyname,
+                                                  yes=str(len(users_yes)),
+                                                  no=str(len(users_no)),
+                                                  list_yes=yes_list,
+                                                  list_no=no_list,
+                                                  time=time)
+            return text, inline_kb
+    else:
+        if count_user_in_chat == len(users_yes) + len(users_no) + 1:
+            if result_votes(vote_id):
+                text = MESSAGES['dislike_result_yes'].format(likes=likes_prettyname,
+                                                          yes=str(len(users_yes)),
+                                                          no=str(len(users_no)),
+                                                          list_yes=yes_list,
+                                                          list_no=no_list)
+            else:
+                text = MESSAGES['dislike_result_no'].format(likes=likes_prettyname,
+                                                         yes=str(len(users_yes)),
+                                                         no=str(len(users_no)),
+                                                         list_yes=yes_list,
+                                                         list_no=no_list)
+            return text, None
+        else:
+            text = MESSAGES['dislike_select'].format(user=user_prettyname,
+                                                  likes=likes_prettyname,
+                                                  yes=str(len(users_yes)),
+                                                  no=str(len(users_no)),
+                                                  list_yes=yes_list,
+                                                  list_no=no_list,
+                                                  time=time)
+            return text, inline_kb
+
+
+def karma_in_chat_text(chat_id, time):
+    text = ''
+    i = 1
+    chat = Session.query(Chats).filter(Chats.chat_id == chat_id).one()
+    max = Session.query(func.max(Karma.karma).label('max')).filter(Karma.chat_id == chat_id).one().max
+    min = Session.query(func.min(Karma.karma).label('min')).filter(Karma.chat_id == chat_id).one().min
+    for karma in Session.query(Karma).filter(Karma.chat_id == chat_id).order_by(Karma.karma.desc()).all():
+        user = Session.query(Users).filter(Users.user_id == karma.user_id).one()
+        if karma.karma == max:
+            text = text + '\n👑 ' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
+                                                                  karma=str(karma.karma))
+        elif karma.karma == min:
+            text = text + '\n💩 ' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
+                                                                  karma=str(karma.karma))
+        else:
+            text = text + '\n' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
+                                                               karma=str(karma.karma))
+        i += 1
+    return MESSAGES['delete_template'].format(text=MESSAGES['karma'].format(name=chat.name, text=text),
+                                              time=time)
