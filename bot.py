@@ -240,7 +240,7 @@ async def process_dislike_command(message: types.Message):
             finally:
                 await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
     else:
-        keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, 0, 'next')
+        keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, '0', 'next')
         to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['dislike_keyboard'].format(
             name=prettyUsername(message.from_user.full_name, message.from_user.username)),
                                                                         time=TIME_TO_SELECT),
@@ -265,7 +265,7 @@ async def process_like_command(message: types.Message):
             await to_del.delete()
         else:
             add_user_chat(message.reply_to_message.from_user, message.chat)
-            vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, 1, message.chat.id)
+            vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, '1', message.chat.id)
             mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
             mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
                                                       reply_markup=mess_inner[1])
@@ -276,7 +276,7 @@ async def process_like_command(message: types.Message):
             finally:
                 await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
     else:
-        keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, 1, 'next')
+        keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, '1', 'next')
         to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['like_keyboard'].format(
             name=prettyUsername(message.from_user.full_name, message.from_user.username)),
                                                                         time=TIME_TO_SELECT),
