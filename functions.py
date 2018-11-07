@@ -225,7 +225,7 @@ def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
     return inline_kb
 
 
-def current_state_vote(time, vote_id):
+def current_state_vote(time, vote_id, end=0):
     voting = Session.query(Votings).filter(Votings.id == vote_id).one()
 
     user = Session.query(Users).filter(Users.user_id == voting.init_user_id).one()
@@ -251,9 +251,8 @@ def current_state_vote(time, vote_id):
     inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)), callback_data='yes-' + str(vote_id))
     inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-' + str(vote_id))
     inline_kb.add(inline_btn_yes, inline_btn_no)
-
     if voting.type == 1:
-        if count_user_in_chat == len(users_yes) + len(users_no) + 1:
+        if end == 1 or count_user_in_chat == len(users_yes) + len(users_no) + 1:
             if result_votes(vote_id):
                 text = MESSAGES['like_result_yes'].format(likes=likes_prettyname,
                                                           yes=str(len(users_yes)),
@@ -277,7 +276,7 @@ def current_state_vote(time, vote_id):
                                                   time=time)
             return text, inline_kb
     else:
-        if count_user_in_chat == len(users_yes) + len(users_no) + 1:
+        if end == 1 or count_user_in_chat == len(users_yes) + len(users_no) + 1:
             if result_votes(vote_id):
                 text = MESSAGES['dislike_result_yes'].format(likes=likes_prettyname,
                                                           yes=str(len(users_yes)),

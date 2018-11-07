@@ -234,10 +234,10 @@ async def process_dislike_command(message: types.Message):
             mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
                                        reply_markup=mess_inner[1])
             await asyncio.sleep(TIME_TO_VOTE * 60)
-            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
-            if await bot.edit_message_text(mess_inner[0], mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                           reply_markup=mess_inner[1]):
+            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id, end=1)
+            try:
                 await bot.delete_message(mess.chat.id, mess.message_id)
+            finally:
                 await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
     else:
         keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, 0, 'next')
@@ -270,7 +270,7 @@ async def process_like_command(message: types.Message):
             mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
                                                       reply_markup=mess_inner[1])
             await asyncio.sleep(TIME_TO_VOTE * 60)
-            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id, end=1)
             try:
                 await bot.delete_message(mess.chat.id, mess.message_id)
             finally:
@@ -300,7 +300,7 @@ async def process_callback_like(callback_query: types.CallbackQuery):
         mess = await callback_query.message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
                                                   reply_markup=mess_inner[1])
         await asyncio.sleep(TIME_TO_VOTE * 60)
-        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id, end=1)
         try:
             await bot.delete_message(mess.chat.id, mess.message_id)
         finally:
@@ -321,7 +321,7 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
         mess = await callback_query.message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
                                                   reply_markup=mess_inner[1])
         await asyncio.sleep(TIME_TO_VOTE * 60)
-        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        mess_inner = current_state_vote(TIME_TO_VOTE, vote_id, end=1)
         try:
             await bot.delete_message(mess.chat.id, mess.message_id)
         finally:
