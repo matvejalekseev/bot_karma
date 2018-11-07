@@ -3,7 +3,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from messages import MESSAGES
 from sqlalchemy import create_engine, and_, func
 from sqlalchemy.orm import scoped_session, sessionmaker
-from db_map import Users, Chats, Karma, Votings, Votes
+from db_map import Users, Chats, Karma, Votings, Votes, Triggers
 from conf import DB_FILENAME, MY_ID, LIMIT_ADVICE, LIMIT_JOKE
 from pytz import timezone
 from datetime import datetime
@@ -182,28 +182,47 @@ def prettyUsername(n, un):
         return MESSAGES['error']
 
 
-def pagination_voting(code, chat_id, user_id, limit, type):
-    users = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
+def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
+    if type_step == 'next':
+        users = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
+                                                 (Karma.user_id != user_id),
+                                                 (Karma.id > code))).order_by(Karma.id).limit(limit).all()
+    else:
+        users = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
+                                                 (Karma.user_id != user_id),
+                                                 (Karma.id <= code))).order_by(Karma.id).limit(limit).all()
+    count_next = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
                                              (Karma.user_id != user_id),
-                                             (Karma.id > code))).order_by(Karma.id).limit(limit).all()
-    count = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
-                                             (Karma.user_id != user_id),
-                                             (Karma.id <= code))).count()
+                                             (Karma.id > code))).count()
+    count_prev = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
+                                                (Karma.user_id != user_id),
+                                                (Karma.id <= code))).count()
+    if type_vote == '1':
+        command = 'like-'
+    else:
+        command = 'dislike-'
     inline_kb = InlineKeyboardMarkup(row_width=1)
     for user in users:
         current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-        inline_btn = InlineKeyboardButton(current_user.name,
-                                          callback_data='dislike-' + str(round(user_id)) + '-'
-                                                        + str(round(current_user.user_id)))
+        inline_btn = InlineKeyboardButton(current_user.name, callback_data=command + str(round(user_id)) + '-'
+                                                                          + str(round(current_user.user_id)))
         inline_kb.add(inline_btn)
-    inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(round(user_id)) + '-' + str(code))
+    if code == 0:
+        inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
+    elif count_prev <= limit and type_step == 'prev':
+        inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
+    else:
+        inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(round(user_id)) + '-' + str(code)
+                                                               + '-' + str(type_vote))
     inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-    if count > limit:
+    if count_next > limit or type_step == 'prev':
         inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user_id)) + '-'
-                                                               + str(round(user.id)))
+                                                               + str(round(user.id))
+                                                               + '-' + str(type_vote))
     else:
         inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
     inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+    return inline_kb
 
 
 def current_state_vote(time, vote_id):
@@ -303,3 +322,69 @@ def karma_in_chat_text(chat_id, time):
         i += 1
     return MESSAGES['delete_template'].format(text=MESSAGES['karma'].format(name=chat.name, text=text),
                                               time=time)
+
+
+def new_trigger(name, text, chat_id, media_id, type):
+    if not Session.query(Triggers).filter(and_((Triggers.name == name), (Triggers.chat_id == chat_id))).all():
+        trigger_current = Triggers(chat_id=chat_id, name=name.lower(), text=text, media_id=media_id, type=type)
+        session = Session()
+        try:
+            session.add(trigger_current)
+            session.commit()
+        finally:
+            session.close()
+    else:
+        session = Session()
+        trigger_current = session.query(Triggers).filter(and_((Triggers.name == name), (Triggers.chat_id == chat_id)))\
+            .one()
+        trigger_current.text = text.lower()
+        trigger_current.media_id = media_id
+        trigger_current.type = type
+        try:
+            session.commit()
+        finally:
+            session.close()
+
+
+def triggers_list(chat_id):
+    text = ''
+    list = Session.query(Triggers).filter(Triggers.chat_id == chat_id).all()
+    if len(list) > 0:
+        for trigger in list:
+            text = text + '!' + trigger.name + '\n'
+        return MESSAGES['triggers_list'].format(text=text)
+    else:
+        return MESSAGES['empty_triggers_list']
+
+
+def trigger(name, chat_id):
+    if Session.query(Triggers).filter(and_((Triggers.name == name), (Triggers.chat_id == chat_id))).all():
+        session = Session()
+        trigger_current = session.query(Triggers).filter(and_((Triggers.name == name), (Triggers.chat_id == chat_id))) \
+            .one()
+        return trigger_current
+    else:
+        return None
+
+
+def delete_trigger(name, chat_id):
+    if Session.query(Triggers).filter(and_((Triggers.name == name), (Triggers.chat_id == chat_id))).all():
+        Session.query(Triggers).filter(and_((Triggers.name == name), (Triggers.chat_id == chat_id))).delete()
+        Session.commit()
+
+
+def change_chat_status(chat_id, status):
+    if Session.query(Chats).filter(Chats.chat_id == chat_id).all():
+        session = Session()
+        chat = session.query(Chats).filter(Chats.chat_id == chat_id).one()
+        chat.status = status
+        try:
+            session.commit()
+        finally:
+            session.close()
+
+
+def chat_status(chat_id):
+    if Session.query(Chats).filter(Chats.chat_id == chat_id).all():
+        chat = Session.query(Chats).filter(Chats.chat_id == chat_id).one()
+        return chat.status

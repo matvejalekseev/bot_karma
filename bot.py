@@ -20,10 +20,11 @@ import logging
 from messages import MESSAGES
 from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID, LIMIT_INLINE_BTN, TIME_TO_SLEEP, \
     LIMIT_ADVICE, LIMIT_JOKE, TIME_TO_SELECT, TIME_TO_VOTE
-from db_map import Users, Chats, Karma, Votings, Votes
+from db_map import Users, Chats, Karma
 
 from functions import prettyUsername, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
-    new_voting, vote, result_votes, karma_in_chat_text, current_state_vote
+    new_voting, vote, karma_in_chat_text, current_state_vote, pagination_voting, trigger, triggers_list, new_trigger, \
+    delete_trigger, change_chat_status, chat_status
 from antimat import matfilter
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
@@ -239,26 +240,11 @@ async def process_dislike_command(message: types.Message):
                 await bot.delete_message(mess.chat.id, mess.message_id)
                 await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
     else:
-        users = Session.query(Karma).filter(and_((Karma.chat_id == message.chat.id), (Karma.user_id != message.from_user.id)))\
-            .order_by(Karma.id).limit(limit_inline_btn).all()
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        count = Session.query(Karma).filter(and_((Karma.chat_id == message.chat.id), (Karma.user_id != message.from_user.id)))\
-            .count()
-        for user in users:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            inline_btn = InlineKeyboardButton(current_user.name, callback_data='dislike-' + str(round(message.from_user.id))
-                                                                               + '-' + str(round(current_user.user_id)))
-            inline_kb.add(inline_btn)
-        if count > limit_inline_btn:
-            inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
-            inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-d-' + str(round(message.from_user.id))
-                                                                               + '-' + str(round(user.id)))
-            inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+        keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, 0, 'next')
         to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['dislike_keyboard'].format(
             name=prettyUsername(message.from_user.full_name, message.from_user.username)),
                                                                         time=TIME_TO_SELECT),
-                                     reply=False, disable_web_page_preview=True, reply_markup=inline_kb)
+                                     reply=False, disable_web_page_preview=True, reply_markup=keyboard)
         await message.delete()
         await asyncio.sleep(TIME_TO_SELECT)
         try:
@@ -285,32 +271,16 @@ async def process_like_command(message: types.Message):
                                                       reply_markup=mess_inner[1])
             await asyncio.sleep(TIME_TO_VOTE * 60)
             mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
-            if await bot.edit_message_text(mess_inner[0], mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                           reply_markup=mess_inner[1]):
+            try:
                 await bot.delete_message(mess.chat.id, mess.message_id)
+            finally:
                 await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
     else:
-        users = Session.query(Karma).filter(and_((Karma.chat_id == message.chat.id),
-                                                 (Karma.user_id != message.from_user.id)))\
-            .order_by(Karma.id).limit(limit_inline_btn).all()
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        count = Session.query(Karma).filter(and_((Karma.chat_id == message.chat.id),
-                                                 (Karma.user_id != message.from_user.id))).count()
-        for user in users:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            inline_btn = InlineKeyboardButton(current_user.name, callback_data='like-' + str(round(message.from_user.id))
-                                                                               + '-' + str(round(current_user.user_id)))
-            inline_kb.add(inline_btn)
-        if count > limit_inline_btn:
-            inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
-            inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-l-' + str(round(message.from_user.id))
-                                                                               + '-' + str(round(user.id)))
-            inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+        keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, 1, 'next')
         to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['like_keyboard'].format(
             name=prettyUsername(message.from_user.full_name, message.from_user.username)),
                                                                         time=TIME_TO_SELECT),
-                                     reply=False, disable_web_page_preview=True, reply_markup=inline_kb)
+                                     reply=False, disable_web_page_preview=True, reply_markup=keyboard)
         await message.delete()
         await asyncio.sleep(TIME_TO_SELECT)
         try:
@@ -326,14 +296,16 @@ async def process_callback_like(callback_query: types.CallbackQuery):
         code = re.findall(r'\d+', callback_query.data)[1]
         vote_id = new_voting(callback_query.from_user.id, code, 1, callback_query.message.chat.id)
         mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
         mess = await callback_query.message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
                                                   reply_markup=mess_inner[1])
         await asyncio.sleep(TIME_TO_VOTE * 60)
         mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
-        if await bot.edit_message_text(mess_inner[0], mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                       reply_markup=mess_inner[1]):
+        try:
             await bot.delete_message(mess.chat.id, mess.message_id)
+        finally:
             await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
+        await bot.answer_callback_query(callback_query.id, '')
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
 
@@ -345,14 +317,16 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
         code = re.findall(r'\d+', callback_query.data)[1]
         vote_id = new_voting(callback_query.from_user.id, code, 0, callback_query.message.chat.id)
         mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+        await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
         mess = await callback_query.message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
                                                   reply_markup=mess_inner[1])
         await asyncio.sleep(TIME_TO_VOTE * 60)
         mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
-        if await bot.edit_message_text(mess_inner[0], mess.chat.id, mess.message_id, disable_web_page_preview=True,
-                                       reply_markup=mess_inner[1]):
+        try:
             await bot.delete_message(mess.chat.id, mess.message_id)
+        finally:
             await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
+        await bot.answer_callback_query(callback_query.id, '')
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
 
@@ -365,6 +339,7 @@ async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
         mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
         await bot.edit_message_text(mess_inner[0], callback_query.message.chat.id, callback_query.message.message_id,
                                     disable_web_page_preview=True, reply_markup=mess_inner[1])
+        await bot.answer_callback_query(callback_query.id, '')
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['only_one_vote'])
 
@@ -377,136 +352,40 @@ async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
         mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
         await bot.edit_message_text(mess_inner[0], callback_query.message.chat.id, callback_query.message.message_id,
                                     disable_web_page_preview=True, reply_markup=mess_inner[1])
+        await bot.answer_callback_query(callback_query.id, '')
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['only_one_vote'])
 
 
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-d-'))
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-'))
 async def process_callback_next(callback_query: types.CallbackQuery):
     user = re.findall(r'\d+', callback_query.data)[0]
     if str(callback_query.from_user.id) == user:
         code = re.findall(r'\d+', callback_query.data)[1]
-        users = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
-                                                 (Karma.user_id != callback_query.from_user.id),
-                                                 (Karma.id > code))).order_by(Karma.id).limit(limit_inline_btn).all()
-        count = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
-                                                 (Karma.user_id != callback_query.from_user.id),
-                                                 (Karma.id <= code))).count()
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        for user in users:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            inline_btn = InlineKeyboardButton(current_user.name,
-                                              callback_data='dislike-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(round(current_user.user_id)))
-            inline_kb.add(inline_btn)
-        inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-d-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(code))
-        inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-        if count > limit_inline_btn:
-            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-d-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(round(user.id)))
-        else:
-            inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
-        inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+        type = re.findall(r'\d+', callback_query.data)[2]
+        keyboard = pagination_voting(code, callback_query.message.chat.id, callback_query.from_user.id, limit_inline_btn,
+                                     type,
+                                     'next')
         await bot.edit_message_reply_markup(callback_query.message.chat.id, callback_query.message.message_id,
-                                            reply_markup=inline_kb)
+                                            reply_markup=keyboard)
+        await bot.answer_callback_query(callback_query.id, '')
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
 
 
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('prev-d-'))
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('prev-'))
 async def process_callback_prev(callback_query: types.CallbackQuery):
     user = re.findall(r'\d+', callback_query.data)[0]
     if str(callback_query.from_user.id) == user:
         code = re.findall(r'\d+', callback_query.data)[1]
-        users = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
-                                                 (Karma.user_id != callback_query.from_user.id),
-                                                 (Karma.id <= code))).order_by(Karma.id).limit(limit_inline_btn).all()
-        count = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
-                                                 (Karma.user_id != callback_query.from_user.id),
-                                                 (Karma.id <= code))).count()
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        for user in users:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            inline_btn = InlineKeyboardButton(current_user.name, callback_data='dislike-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(round(current_user.user_id)))
-            inline_kb.add(inline_btn)
-        if count > limit_inline_btn:
-            inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-d-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(round(user.id)))
-        else:
-            inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
-        inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-        inline_btn_3 = InlineKeyboardButton('>', callback_data='next-d-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(code))
-        inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+        type = re.findall(r'\d+', callback_query.data)[2]
+        keyboard = pagination_voting(code, callback_query.message.chat.id, callback_query.from_user.id,
+                                     limit_inline_btn,
+                                     type,
+                                     'prev')
         await bot.edit_message_reply_markup(callback_query.message.chat.id, callback_query.message.message_id,
-                                            reply_markup=inline_kb)
-    else:
-        await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
-
-
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('next-l-'))
-async def process_callback_next(callback_query: types.CallbackQuery):
-    user = re.findall(r'\d+', callback_query.data)[0]
-    if str(callback_query.from_user.id) == user:
-        code = re.findall(r'\d+', callback_query.data)[1]
-        users = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
-                                                 (Karma.user_id != callback_query.from_user.id),
-                                                 (Karma.id > code))).order_by(Karma.id).limit(limit_inline_btn).all()
-        count = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
-                                                 (Karma.user_id != callback_query.from_user.id),
-                                                 (Karma.id <= code))).count()
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        for user in users:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            inline_btn = InlineKeyboardButton(current_user.name,
-                                              callback_data='like-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(round(current_user.user_id)))
-            inline_kb.add(inline_btn)
-        inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-l-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(code))
-        inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-        if count > limit_inline_btn:
-            inline_btn_3 = InlineKeyboardButton('>', callback_data='next-l-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(round(user.id)))
-        else:
-            inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
-        inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
-        await bot.edit_message_reply_markup(callback_query.message.chat.id, callback_query.message.message_id,
-                                            reply_markup=inline_kb)
-    else:
-        await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
-
-
-@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('prev-l-'))
-async def process_callback_prev(callback_query: types.CallbackQuery):
-    user = re.findall(r'\d+', callback_query.data)[0]
-    if str(callback_query.from_user.id) == user:
-        code = re.findall(r'\d+', callback_query.data)[1]
-        users = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
-                                                 (Karma.user_id != callback_query.from_user.id),
-                                                 (Karma.id <= code))).order_by(Karma.id).limit(limit_inline_btn).all()
-        count = Session.query(Karma).filter(and_((Karma.chat_id == callback_query.message.chat.id),
-                                                 (Karma.user_id != callback_query.from_user.id),
-                                                 (Karma.id <= code))).count()
-        inline_kb = InlineKeyboardMarkup(row_width=1)
-        for user in users:
-            current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-            inline_btn = InlineKeyboardButton(current_user.name, callback_data='like-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(round(current_user.user_id)))
-            inline_kb.add(inline_btn)
-        if count > limit_inline_btn:
-            inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-l-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(round(user.id)))
-        else:
-            inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
-        inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
-        inline_btn_3 = InlineKeyboardButton('>', callback_data='next-l-' + str(round(callback_query.from_user.id))
-                                                                           + '-' + str(code))
-        inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
-        await bot.edit_message_reply_markup(callback_query.message.chat.id, callback_query.message.message_id,
-                                            reply_markup=inline_kb)
+                                            reply_markup=keyboard)
+        await bot.answer_callback_query(callback_query.id, '')
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
 
@@ -552,7 +431,7 @@ async def process_autoleave_new_members(message: types.Message):
 async def process_autoleave_new_chat(message: types.Message):
     me = await dp.bot.me
     if Session.query(Users).filter(and_(Users.user_id == message.from_user.id), (Users.status == 1)).all():
-        chat = Chats(name=message.chat.title, chat_id=message.chat.id)
+        chat = Chats(name=message.chat.title, chat_id=message.chat.id, status=0)
         Session.add(chat)
         Session.commit()
         count = await bot.get_chat_members_count(message.chat.id)
@@ -579,72 +458,279 @@ async def process_kick_member(message: types.Message):
 
 @dp.message_handler(commands=['restrict'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_restrict_command(message: types.Message):
-    if message.reply_to_message.from_user.id:
-        await bot.restrict_chat_member(message.chat.id,
-                                       message.reply_to_message.from_user.id,
-                                       can_send_messages=False,
-                                       can_add_web_page_previews=False,
-                                       can_send_media_messages=False,
-                                       can_send_other_messages=False)
-        to_del = await message.reply_to_message.reply(MESSAGES['delete_template'].format(
-            text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
-            disable_web_page_preview=True)
+    if message.from_user.id == MY_ID:
+        if message.reply_to_message.from_user.id:
+            await bot.restrict_chat_member(message.chat.id,
+                                           message.reply_to_message.from_user.id,
+                                           can_send_messages=False,
+                                           can_add_web_page_previews=False,
+                                           can_send_media_messages=False,
+                                           can_send_other_messages=False)
+            to_del = await message.reply_to_message.reply(MESSAGES['delete_template'].format(
+                text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
+                disable_web_page_preview=True)
+            await message.delete()
+            await asyncio.sleep(TIME_TO_SLEEP)
+            await to_del.delete()
+            await asyncio.sleep(TIME_TO_SELECT-TIME_TO_SLEEP)
+            await bot.restrict_chat_member(message.chat.id,
+                                           message.reply_to_message.from_user.id,
+                                           can_send_messages=True,
+                                           can_add_web_page_previews=True,
+                                           can_send_media_messages=True,
+                                           can_send_other_messages=True)
+    else:
         await message.delete()
-        await asyncio.sleep(TIME_TO_SLEEP)
+
+
+@dp.message_handler(commands=['trigger'], func=lambda message: message.chat.type in ('group', 'supergroup'))
+async def process_restrict_command(message: types.Message):
+    if message.reply_to_message:
+        name = message.text[9:]
+        if len(name) == 0:
+            to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['error_name_trigger'],
+                                                                            time=TIME_TO_SLEEP),
+                                         disable_web_page_preview=True, reply=False)
+            await message.delete()
+            await asyncio.sleep(TIME_TO_SLEEP)
+            await to_del.delete()
+        elif len(name) > 29:
+            to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['error_name_trigger'],
+                                                                            time=TIME_TO_SLEEP),
+                                         disable_web_page_preview=True, reply=False)
+            await message.delete()
+            await asyncio.sleep(TIME_TO_SLEEP)
+            await to_del.delete()
+        else:
+            if message.reply_to_message.animation:
+                if message.reply_to_message.caption:
+                    text = message.reply_to_message.caption
+                else:
+                    text = ''
+                new_trigger(name, text, message.chat.id,
+                            message.reply_to_message.animation.file_id,
+                            'animation')
+                to_del = await message.reply_to_message.reply(
+                    MESSAGES['delete_template'].format(text=MESSAGES['trigger_save'],
+                                                       time=TIME_TO_SLEEP),
+                    disable_web_page_preview=True)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+            elif message.reply_to_message.sticker:
+                new_trigger(name, None, message.chat.id,
+                            message.reply_to_message.sticker.file_id,
+                            'sticker')
+                to_del = await message.reply_to_message.reply(
+                    MESSAGES['delete_template'].format(text=MESSAGES['trigger_save'],
+                                                       time=TIME_TO_SLEEP),
+                    disable_web_page_preview=True)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+            elif message.reply_to_message.photo:
+                if message.reply_to_message.caption:
+                    text = message.reply_to_message.caption
+                else:
+                    text = ''
+                new_trigger(name, text, message.chat.id,
+                            message.reply_to_message.photo[len(message.reply_to_message.photo) - 1].file_id,
+                            'photo')
+                to_del = await message.reply_to_message.reply(
+                    MESSAGES['delete_template'].format(text=MESSAGES['trigger_save'],
+                                                       time=TIME_TO_SLEEP),
+                    disable_web_page_preview=True)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+            elif message.reply_to_message.text:
+                if len(message.reply_to_message.html_text) == 0:
+                    to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['error_text_trigger'],
+                                                                                    time=TIME_TO_SLEEP),
+                                                 disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                elif len(message.reply_to_message.html_text) > 4095:
+                    to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['error_text_trigger'],
+                                                                                    time=TIME_TO_SLEEP),
+                                                 disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                else:
+                    new_trigger(name, message.reply_to_message.html_text, message.chat.id, None,'text')
+                    to_del = await message.reply_to_message.reply(
+                        MESSAGES['delete_template'].format(text=MESSAGES['trigger_save'],
+                                                           time=TIME_TO_SLEEP),
+                        disable_web_page_preview=True)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+            else:
+                await message.delete()
+    else:
+        mess = triggers_list(message.chat.id)
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=mess, time=TIME_TO_SLEEP*10),
+                                         disable_web_page_preview=True, reply=False)
+        await message.delete()
+        await asyncio.sleep(TIME_TO_SLEEP*10)
         await to_del.delete()
-        await asyncio.sleep(TIME_TO_SELECT-TIME_TO_SLEEP)
-        await bot.restrict_chat_member(message.chat.id,
-                                       message.reply_to_message.from_user.id,
-                                       can_send_messages=True,
-                                       can_add_web_page_previews=True,
-                                       can_send_media_messages=True,
-                                       can_send_other_messages=True)
+
+
+@dp.message_handler(commands=['dt'], func=lambda message: message.chat.type in ('group', 'supergroup'))
+async def process_restrict_command(message: types.Message):
+    if message.from_user.id == MY_ID:
+        name = message.text[4:]
+        delete_trigger(name, message.chat.id)
+    await message.delete()
+
+@dp.message_handler(commands=['ccs'], func=lambda message: message.chat.type in ('group', 'supergroup'))
+async def process_restrict_command(message: types.Message):
+    if message.from_user.id == MY_ID:
+        status = int(message.text[5:])
+        change_chat_status(message.chat.id, status)
+    await message.delete()
 
 
 @dp.edited_message_handler(func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_edit_message(message: types.Message):
-    if re.findall(r'\w+',  message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
-        to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template'].format(
-            text=MESSAGES['no_privet'], time=TIME_TO_SLEEP), disable_web_page_preview=True)
-        await message.delete()
-        await asyncio.sleep(TIME_TO_SLEEP)
-        await to_del.delete()
-    elif len(matfilter(message.text)):
-        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['antimat'],
-                                                                        time=TIME_TO_SLEEP),
-                                     disable_web_page_preview=True)
-        await asyncio.sleep(TIME_TO_SLEEP)
-        await to_del.delete()
-    elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
-        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
-                                                                        time=TIME_TO_SLEEP),
-                                     disable_web_page_preview=True)
-        await asyncio.sleep(TIME_TO_SLEEP)
-        await to_del.delete()
+    if message.text[0] == '!':
+        trig = trigger(message.text[1:].lower(), message.chat.id)
+        if trig:
+            if trig.type == 'photo':
+                await bot.send_photo(message.chat.id, trig.media_id, caption=trig.text)
+            elif trig.type == 'animation':
+                await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+            elif trig.type == 'sticker':
+                await bot.send_sticker(message.chat.id, trig.media_id)
+            elif trig.type == 'text':
+                await bot.send_message(message.chat.id, trig.text, disable_web_page_preview=True)
+    elif chat_status(message.chat.id) == 1:
+        if re.findall(r'\w+', message.text):
+            if re.findall(r'\w+', message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
+                to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template'].format(
+                    text=MESSAGES['no_privet'], time=TIME_TO_SLEEP), disable_web_page_preview=True)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+            elif len(matfilter(message.text)):
+                admins = await bot.get_chat_administrators(message.chat.id)
+                user = await bot.get_chat_member(message.chat.id, message.from_user.id)
+                if user in admins:
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['antimat'], time=TIME_TO_SLEEP),
+                        disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                else:
+                    await bot.restrict_chat_member(message.chat.id,
+                                                   message.from_user.id,
+                                                   can_send_messages=False,
+                                                   can_add_web_page_previews=False,
+                                                   can_send_media_messages=False,
+                                                   can_send_other_messages=False)
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
+                        disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                    await asyncio.sleep(TIME_TO_SELECT - TIME_TO_SLEEP)
+                    await bot.restrict_chat_member(message.chat.id,
+                                                   message.from_user.id,
+                                                   can_send_messages=True,
+                                                   can_add_web_page_previews=True,
+                                                   can_send_media_messages=True,
+                                                   can_send_other_messages=True)
+            elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
+                to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
+                                                                                time=TIME_TO_SLEEP),
+                                             disable_web_page_preview=True)
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
 
 
 @dp.message_handler(func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_another_message(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     i = random.randrange(500)
-    if re.findall(r'\w+', message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
-        to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template'].format(
-            text=MESSAGES['no_privet'], time=TIME_TO_SLEEP), disable_web_page_preview=True)
-        await message.delete()
-        await asyncio.sleep(TIME_TO_SLEEP)
-        await to_del.delete()
-    elif len(matfilter(message.text)):
-        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['antimat'],
-                                                                        time=TIME_TO_SLEEP),
-                                     disable_web_page_preview=True)
-        await asyncio.sleep(TIME_TO_SLEEP)
-        await to_del.delete()
-    elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
-        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
-                                                                        time=TIME_TO_SLEEP),
-                                     disable_web_page_preview=True)
-        await asyncio.sleep(TIME_TO_SLEEP)
-        await to_del.delete()
+    if message.text[0] == '!':
+        trig = trigger(message.text[1:].lower(), message.chat.id)
+        if trig:
+            if trig.type == 'photo':
+                await bot.send_photo(message.chat.id, trig.media_id, caption=trig.text)
+            elif trig.type == 'animation':
+                await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+            elif trig.type == 'sticker':
+                await bot.send_sticker(message.chat.id, trig.media_id)
+            elif trig.type == 'text':
+                await bot.send_message(message.chat.id, trig.text, disable_web_page_preview=True)
+    elif chat_status(message.chat.id) == 1:
+        if re.findall(r'\w+', message.text):
+            if re.findall(r'\w+', message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
+                to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template'].format(
+                    text=MESSAGES['no_privet'], time=TIME_TO_SLEEP), disable_web_page_preview=True)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+            elif len(matfilter(message.text)):
+                admins = await bot.get_chat_administrators(message.chat.id)
+                user = await bot.get_chat_member(message.chat.id, message.from_user.id)
+                if user in admins:
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['antimat'], time=TIME_TO_SLEEP),
+                        disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                else:
+                    await bot.restrict_chat_member(message.chat.id,
+                                                   message.from_user.id,
+                                                   can_send_messages=False,
+                                                   can_add_web_page_previews=False,
+                                                   can_send_media_messages=False,
+                                                   can_send_other_messages=False)
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
+                        disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                    await asyncio.sleep(TIME_TO_SELECT - TIME_TO_SLEEP)
+                    await bot.restrict_chat_member(message.chat.id,
+                                                   message.from_user.id,
+                                                   can_send_messages=True,
+                                                   can_add_web_page_previews=True,
+                                                   can_send_media_messages=True,
+                                                   can_send_other_messages=True)
+            elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
+                to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
+                                                                                time=TIME_TO_SLEEP),
+                                             disable_web_page_preview=True)
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+        elif i == 1:
+            session = Session()
+            karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
+                                                     (Karma.chat_id == message.chat.id))).one()
+            karma.karma += 1
+            try:
+                session.commit()
+            finally:
+                session.close()
+            await message.reply(MESSAGES['random_like'], disable_web_page_preview=True)
+        elif i == 2:
+            session = Session()
+            karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
+                                                     (Karma.chat_id == message.chat.id))).one()
+            karma.karma -= 1
+            try:
+                session.commit()
+            finally:
+                session.close()
+            await message.reply(MESSAGES['random_dislike'], disable_web_page_preview=True)
     else:
         if i == 1:
             session = Session()

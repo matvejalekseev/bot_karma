@@ -116,6 +116,13 @@ no_privet = '''\
 '''
 antimat = 'Ну давай тут ещё и бордель устроим, хватит ругаться'
 ban_user = 'Тсссс, давай помолчим всего то {time} секунд...'
+trigger_save = 'Ага, запомнил'
+empty_triggers_list = 'Таблица пуста'
+triggers_list = '''\
+Список триггеров в чате:
+{text}'''
+error_name_trigger = 'Неверный формат имени триггера'
+error_text_trigger = 'Неверный формат сообщения'
 
 
 MESSAGES = {
@@ -165,6 +172,11 @@ MESSAGES = {
         'no_privet': no_privet,
         'antimat': antimat,
         'ban_user': ban_user,
+        'trigger_save': trigger_save,
+        'empty_triggers_list': empty_triggers_list,
+        'triggers_list': triggers_list,
+        'error_name_trigger': error_name_trigger,
+        'error_text_trigger': error_text_trigger,
 
 }
 

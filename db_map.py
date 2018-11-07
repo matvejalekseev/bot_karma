@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint, DateTime, Numeric
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
@@ -90,3 +88,20 @@ class Votes(Base):
         self.vote_id = vote_id
         self.user_id = user_id
         self.answer = answer
+
+
+class Triggers(Base):
+    __tablename__ = 'Triggers'
+    id = Column(Integer, primary_key=True)
+    chat_id = Column('chat_id', Numeric, ForeignKey('Chats.chat_id'))
+    text = Column('text', String(4096))
+    name = Column('name', String(30))
+    type = Column('type', String(30))
+    media_id = Column('media_id', String(100))
+
+    def __init__(self, chat_id, text, name, type=None, media_id=None):
+        self.chat_id = chat_id
+        self.text = text
+        self.name = name
+        self.type = type
+        self.media_id = media_id
