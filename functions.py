@@ -197,6 +197,8 @@ def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
     count_prev = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
                                                 (Karma.user_id != user_id),
                                                 (Karma.id <= code))).count()
+    count = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
+                                                  (Karma.user_id != user_id))).count()
     if type_vote == '1':
         command = 'like-'
     else:
@@ -221,7 +223,8 @@ def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
                                                                + '-' + str(type_vote))
     else:
         inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
-    inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
+    if count > limit:
+        inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
     return inline_kb
 
 
