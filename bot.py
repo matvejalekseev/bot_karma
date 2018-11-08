@@ -348,7 +348,7 @@ async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
 async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
     add_user_chat(callback_query.from_user, callback_query.message.chat)
     vote_id = int(re.findall(r'\d+', callback_query.data)[0])
-    if vote(callback_query.from_user.id, vote_id, 1):
+    if vote(callback_query.from_user.id, vote_id, 0):
         mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
         await bot.edit_message_text(mess_inner[0], callback_query.message.chat.id, callback_query.message.message_id,
                                     disable_web_page_preview=True, reply_markup=mess_inner[1])
