@@ -231,6 +231,7 @@ async def process_dislike_command(message: types.Message):
             add_user_chat(message.reply_to_message.from_user, message.chat)
             vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, 0, message.chat.id)
             mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+            await message.delete()
             mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
                                        reply_markup=mess_inner[1])
             await asyncio.sleep(TIME_TO_VOTE * 60)
@@ -267,6 +268,7 @@ async def process_like_command(message: types.Message):
             add_user_chat(message.reply_to_message.from_user, message.chat)
             vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, '1', message.chat.id)
             mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+            await message.delete()
             mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
                                                       reply_markup=mess_inner[1])
             await asyncio.sleep(TIME_TO_VOTE * 60)
