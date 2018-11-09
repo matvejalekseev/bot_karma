@@ -327,7 +327,7 @@ def karma_in_chat_text(chat_id, time):
 
 
 def new_trigger(name, text, chat_id, media_id, type):
-    if not Session.query(Triggers).filter(and_((Triggers.name == name), (Triggers.chat_id == chat_id))).all():
+    if not Session.query(Triggers).filter(and_((Triggers.name == name.lower()), (Triggers.chat_id == chat_id))).all():
         trigger_current = Triggers(chat_id=chat_id, name=name.lower(), text=text, media_id=media_id, type=type)
         session = Session()
         try:
@@ -337,7 +337,7 @@ def new_trigger(name, text, chat_id, media_id, type):
             session.close()
     else:
         session = Session()
-        trigger_current = session.query(Triggers).filter(and_((Triggers.name == name), (Triggers.chat_id == chat_id)))\
+        trigger_current = session.query(Triggers).filter(and_((Triggers.name == name.lower()), (Triggers.chat_id == chat_id)))\
             .one()
         trigger_current.text = text.lower()
         trigger_current.media_id = media_id
