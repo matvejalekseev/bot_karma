@@ -70,6 +70,7 @@ async def process_src_command(message: types.Message):
     await message.reply("<pre>" + json.dumps(json.loads(json_msg, encoding="utf-8"), sort_keys=True, indent=4,
                                              ensure_ascii=False)
                         + "</pre>", reply=False)
+    await message.delete()
 
 @dp.message_handler(commands=['advice'])
 async def process_advice_command(message: types.Message):
@@ -530,6 +531,21 @@ async def process_restrict_command(message: types.Message):
                 await message.delete()
                 await asyncio.sleep(TIME_TO_SLEEP)
                 await to_del.delete()
+            elif message.reply_to_message.document:
+                if message.reply_to_message.caption:
+                    text = message.reply_to_message.caption
+                else:
+                    text = ''
+                new_trigger(name, text, message.chat.id,
+                            message.reply_to_message.document.file_id,
+                            'document')
+                to_del = await message.reply_to_message.reply(
+                    MESSAGES['delete_template'].format(text=MESSAGES['trigger_save'],
+                                                       time=TIME_TO_SLEEP),
+                    disable_web_page_preview=True)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
             elif message.reply_to_message.photo:
                 if message.reply_to_message.caption:
                     text = message.reply_to_message.caption
@@ -608,6 +624,8 @@ async def process_edit_message(message: types.Message):
                 await bot.send_sticker(message.chat.id, trig.media_id)
             elif trig.type == 'text':
                 await bot.send_message(message.chat.id, trig.text, disable_web_page_preview=True)
+            elif trig.type == 'document':
+                await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
     elif chat_status(message.chat.id) == 1:
         if re.findall(r'\w+', message.text):
             if re.findall(r'\w+', message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
@@ -669,6 +687,8 @@ async def process_another_message(message: types.Message):
                 await bot.send_sticker(message.chat.id, trig.media_id)
             elif trig.type == 'text':
                 await bot.send_message(message.chat.id, trig.text, disable_web_page_preview=True)
+            elif trig.type == 'document':
+                await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
     elif chat_status(message.chat.id) == 1:
         if re.findall(r'\w+', message.text):
             if re.findall(r'\w+', message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
