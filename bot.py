@@ -24,7 +24,7 @@ from db_map import Users, Chats, Karma
 
 from functions import prettyUsername, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
     new_voting, vote, karma_in_chat_text, current_state_vote, pagination_voting, trigger, triggers_list, new_trigger, \
-    delete_trigger, change_chat_status, chat_status
+    delete_trigger, change_chat_status, chat_status, vote_new
 from antimat import matfilter
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
@@ -308,7 +308,6 @@ async def process_callback_like(callback_query: types.CallbackQuery):
             await bot.delete_message(mess.chat.id, mess.message_id)
         finally:
             await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
-        await bot.answer_callback_query(callback_query.id, '')
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
 
@@ -329,7 +328,6 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
             await bot.delete_message(mess.chat.id, mess.message_id)
         finally:
             await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
-        await bot.answer_callback_query(callback_query.id, '')
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
 
@@ -338,11 +336,14 @@ async def process_callback_dislike(callback_query: types.CallbackQuery):
 async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
     add_user_chat(callback_query.from_user, callback_query.message.chat)
     vote_id = int(re.findall(r'\d+', callback_query.data)[0])
-    if vote(callback_query.from_user.id, vote_id, 1):
+    result = vote_new(callback_query.from_user.id, vote_id, 1)
+    if result == 1:
         mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
         await bot.edit_message_text(mess_inner[0], callback_query.message.chat.id, callback_query.message.message_id,
                                     disable_web_page_preview=True, reply_markup=mess_inner[1])
         await bot.answer_callback_query(callback_query.id, '')
+    elif result == 2:
+        await bot.answer_callback_query(callback_query.id, MESSAGES['not_vote_yourself'])
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['only_one_vote'])
 
@@ -351,11 +352,14 @@ async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
 async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
     add_user_chat(callback_query.from_user, callback_query.message.chat)
     vote_id = int(re.findall(r'\d+', callback_query.data)[0])
-    if vote(callback_query.from_user.id, vote_id, 0):
+    result = vote_new(callback_query.from_user.id, vote_id, 0)
+    if result == 1:
         mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
         await bot.edit_message_text(mess_inner[0], callback_query.message.chat.id, callback_query.message.message_id,
                                     disable_web_page_preview=True, reply_markup=mess_inner[1])
         await bot.answer_callback_query(callback_query.id, '')
+    elif result == 2:
+        await bot.answer_callback_query(callback_query.id, MESSAGES['not_vote_yourself'])
     else:
         await bot.answer_callback_query(callback_query.id, MESSAGES['only_one_vote'])
 

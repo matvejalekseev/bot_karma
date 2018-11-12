@@ -83,6 +83,23 @@ def jokes_limit_counter(id):
         return True
 
 
+def vote_new(user, vote, answer):
+    if Session.query(Votings).filter(and_(Votings.candidate_user_id == user, Votings.id == vote)).all():
+        return 2
+    else:
+        if Session.query(Votes).filter(and_(Votes.user_id == user, Votes.vote_id == vote)).all():
+            return 0
+        else:
+            vote = Votes(vote_id=vote, user_id=user, answer=answer)
+            session = Session()
+            try:
+                session.add(vote)
+                session.commit()
+            finally:
+                session.close()
+            return 1
+
+
 def vote(user, vote, answer):
     if Session.query(Votes).filter(and_(Votes.user_id == user, Votes.vote_id == vote)).all():
         return False
@@ -102,7 +119,8 @@ def result_votes(vote):
         yes = Session.query(Votes).filter(and_(Votes.answer == 1, Votes.vote_id == vote)).count()
         no = Session.query(Votes).filter(and_(Votes.answer == 0, Votes.vote_id == vote)).count()
         voting = Session.query(Votings).filter(Votings.id == vote).one()
-        if yes > no and yes > 1:
+        count = Session.query(Karma).filter(Karma.chat_id == voting.chat_id).count()
+        if (yes > no and yes > 1) or count == 3:
             session = Session()
             karma = session.query(Karma).filter(and_((Karma.user_id == voting.candidate_user_id),
                                                      (Karma.chat_id == voting.chat_id))).one()
@@ -255,7 +273,7 @@ def current_state_vote(time, vote_id, end=0):
     inline_btn_no = InlineKeyboardButton('Нет - ' + str(len(users_no)), callback_data='no-' + str(vote_id))
     inline_kb.add(inline_btn_yes, inline_btn_no)
     if voting.type == 1:
-        if end == 1 or count_user_in_chat == len(users_yes) + len(users_no) + 1:
+        if end == 1 or count_user_in_chat == len(users_yes) + len(users_no) + 2:
             if result_votes(vote_id):
                 text = MESSAGES['like_result_yes'].format(likes=likes_prettyname,
                                                           yes=str(len(users_yes)),
@@ -279,7 +297,7 @@ def current_state_vote(time, vote_id, end=0):
                                                   time=time)
             return text, inline_kb
     else:
-        if end == 1 or count_user_in_chat == len(users_yes) + len(users_no) + 1:
+        if end == 1 or count_user_in_chat == len(users_yes) + len(users_no) + 2:
             if result_votes(vote_id):
                 text = MESSAGES['dislike_result_yes'].format(likes=likes_prettyname,
                                                           yes=str(len(users_yes)),
@@ -353,7 +371,7 @@ def triggers_list(chat_id):
     list = Session.query(Triggers).filter(Triggers.chat_id == chat_id).all()
     if len(list) > 0:
         for trigger in list:
-            text = text + '!' + trigger.name + '\n'
+            text = text + '<pre>!' + trigger.name + '</pre>\n'
         return MESSAGES['triggers_list'].format(text=text)
     else:
         return MESSAGES['empty_triggers_list']
