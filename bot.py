@@ -15,6 +15,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 import asyncio
 import logging
+import apiai
 
 
 from messages import MESSAGES
@@ -71,6 +72,7 @@ async def process_src_command(message: types.Message):
                                              ensure_ascii=False)
                         + "</pre>", reply=False)
     await message.delete()
+
 
 @dp.message_handler(commands=['advice'])
 async def process_advice_command(message: types.Message):
@@ -638,36 +640,36 @@ async def process_edit_message(message: types.Message):
                 await message.delete()
                 await asyncio.sleep(TIME_TO_SLEEP)
                 await to_del.delete()
-            #elif len(matfilter(message.text)):
-            #    admins = await bot.get_chat_administrators(message.chat.id)
-            #    user = await bot.get_chat_member(message.chat.id, message.from_user.id)
-            #    if user in admins:
-            #        to_del = await message.reply(MESSAGES['delete_template'].format(
-            #            text=MESSAGES['antimat'], time=TIME_TO_SLEEP),
-            #            disable_web_page_preview=True, reply=False)
-            #        await message.delete()
-            #        await asyncio.sleep(TIME_TO_SLEEP)
-            #        await to_del.delete()
-            #    else:
-            #        await bot.restrict_chat_member(message.chat.id,
-            #                                       message.from_user.id,
-            #                                       can_send_messages=False,
-            #                                       can_add_web_page_previews=False,
-            #                                       can_send_media_messages=False,
-            #                                       can_send_other_messages=False)
-            #        to_del = await message.reply(MESSAGES['delete_template'].format(
-            #            text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
-            #            disable_web_page_preview=True, reply=False)
-            #        await message.delete()
-            #        await asyncio.sleep(TIME_TO_SLEEP)
-            #        await to_del.delete()
-            #        await asyncio.sleep(TIME_TO_SELECT - TIME_TO_SLEEP)
-            #       await bot.restrict_chat_member(message.chat.id,
-            #                                      message.from_user.id,
-            #                                      can_send_messages=True,
-            #                                       can_add_web_page_previews=True,
-            #                                       can_send_media_messages=True,
-            #                                       can_send_other_messages=True)
+            elif len(matfilter(message.text)):
+                admins = await bot.get_chat_administrators(message.chat.id)
+                user = await bot.get_chat_member(message.chat.id, message.from_user.id)
+                if user in admins:
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['antimat'], time=TIME_TO_SLEEP),
+                        disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                else:
+                    await bot.restrict_chat_member(message.chat.id,
+                                                   message.from_user.id,
+                                                   can_send_messages=False,
+                                                   can_add_web_page_previews=False,
+                                                   can_send_media_messages=False,
+                                                   can_send_other_messages=False)
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
+                        disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                    await asyncio.sleep(TIME_TO_SELECT - TIME_TO_SLEEP)
+                    await bot.restrict_chat_member(message.chat.id,
+                                                  message.from_user.id,
+                                                  can_send_messages=True,
+                                                   can_add_web_page_previews=True,
+                                                   can_send_media_messages=True,
+                                                  can_send_other_messages=True)
             elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
                 to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
                                                                                 time=TIME_TO_SLEEP),
@@ -693,6 +695,17 @@ async def process_another_message(message: types.Message):
                 await bot.send_message(message.chat.id, trig.text, disable_web_page_preview=True)
             elif trig.type == 'document':
                 await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+    elif message.text[:4].lower() == 'бот,':
+        request = apiai.ApiAI('ba1e5b3eee2c4229a58cb7d86ea1f214').text_request()
+        request.lang = 'ru'
+        request.session_id = 'AIBot'
+        request.query = message.text[5:]
+        responseJson = json.loads(request.getresponse().read().decode('utf-8'))
+        response = responseJson['result']['fulfillment']['speech']
+        if response:
+            await bot.send_message(message.chat.id, response)
+        else:
+            await bot.send_message(message.chat.id, 'Я Вас не совсем понял!')
     elif chat_status(message.chat.id) == 1:
         if re.findall(r'\w+', message.text):
             if re.findall(r'\w+', message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
@@ -701,36 +714,36 @@ async def process_another_message(message: types.Message):
                 await message.delete()
                 await asyncio.sleep(TIME_TO_SLEEP)
                 await to_del.delete()
-            #elif len(matfilter(message.text)):
-            #    admins = await bot.get_chat_administrators(message.chat.id)
-            #    user = await bot.get_chat_member(message.chat.id, message.from_user.id)
-            #    if user in admins:
-            #        to_del = await message.reply(MESSAGES['delete_template'].format(
-            #            text=MESSAGES['antimat'], time=TIME_TO_SLEEP),
-            #            disable_web_page_preview=True, reply=False)
-            #        await message.delete()
-            #        await asyncio.sleep(TIME_TO_SLEEP)
-            #        await to_del.delete()
-            #    else:
-            #        await bot.restrict_chat_member(message.chat.id,
-            #                                       message.from_user.id,
-            #                                       can_send_messages=False,
-            #                                       can_add_web_page_previews=False,
-            #                                       can_send_media_messages=False,
-            #                                       can_send_other_messages=False)
-            #        to_del = await message.reply(MESSAGES['delete_template'].format(
-            #            text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
-            #            disable_web_page_preview=True, reply=False)
-            #        await message.delete()
-            #        await asyncio.sleep(TIME_TO_SLEEP)
-            #        await to_del.delete()
-            #        await asyncio.sleep(TIME_TO_SELECT - TIME_TO_SLEEP)
-            #        await bot.restrict_chat_member(message.chat.id,
-            #                                       message.from_user.id,
-            #                                       can_send_messages=True,
-            #                                       can_add_web_page_previews=True,
-            #                                       can_send_media_messages=True,
-            #                                      can_send_other_messages=True)
+            elif len(matfilter(message.text)):
+                admins = await bot.get_chat_administrators(message.chat.id)
+                user = await bot.get_chat_member(message.chat.id, message.from_user.id)
+                if user in admins:
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['antimat'], time=TIME_TO_SLEEP),
+                        disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                else:
+                    await bot.restrict_chat_member(message.chat.id,
+                                                   message.from_user.id,
+                                                   can_send_messages=False,
+                                                   can_add_web_page_previews=False,
+                                                   can_send_media_messages=False,
+                                                   can_send_other_messages=False)
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
+                        disable_web_page_preview=True, reply=False)
+                    await message.delete()
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
+                    await asyncio.sleep(TIME_TO_SELECT - TIME_TO_SLEEP)
+                    await bot.restrict_chat_member(message.chat.id,
+                                                   message.from_user.id,
+                                                   can_send_messages=True,
+                                                   can_add_web_page_previews=True,
+                                                   can_send_media_messages=True,
+                                                  can_send_other_messages=True)
             elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
                 to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
                                                                                 time=TIME_TO_SLEEP),
