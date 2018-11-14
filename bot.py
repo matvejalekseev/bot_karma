@@ -68,10 +68,29 @@ async def process_start_command(message: types.Message):
 async def process_src_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     json_msg = message.as_json()
-    await message.reply("<pre>" + json.dumps(json.loads(json_msg, encoding="utf-8"), sort_keys=True, indent=4,
-                                             ensure_ascii=False)
-                        + "</pre>", reply=False)
+    to_del = await message.reply(MESSAGES['delete_template'].format(text="<pre>" + json.dumps(json.loads(json_msg,
+                                                                 encoding="utf-8"),
+                                                      sort_keys=True,
+                                                      indent=4,
+                                                    ensure_ascii=False)
+                                 + "</pre>", time=TIME_TO_SELECT),
+                                 reply=False)
     await message.delete()
+    await asyncio.sleep(TIME_TO_SELECT)
+    await to_del.delete()
+
+
+@dp.message_handler(commands=['decode'])
+async def process_src_command(message: types.Message):
+    add_user_chat(message.from_user, message.chat)
+    to_del = await bot.send_message(message.chat.id, MESSAGES['delete_template']
+                                    .format(text="<pre>" + message.reply_to_message.text.encode('utf-8')
+                                    .decode('unicode-escape')
+                                    + "</pre>", time=TIME_TO_SELECT),
+                                    reply_to_message_id=message.reply_to_message.message_id)
+    await message.delete()
+    await asyncio.sleep(TIME_TO_SELECT)
+    await to_del.delete()
 
 
 @dp.message_handler(commands=['advice'])
