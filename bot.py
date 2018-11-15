@@ -9,7 +9,7 @@ from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, input_media, InputMediaDocument
 from aiogram.utils import executor
-from sqlalchemy import create_engine, and_
+from sqlalchemy import create_engine, and_, desc
 from sqlalchemy.orm import scoped_session, sessionmaker
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
@@ -212,22 +212,22 @@ async def process_me_command(message: types.Message):
         await to_del.delete()
 
 
-@dp.message_handler(commands=['users'])
+@dp.message_handler(commands=['users'], func=lambda message: message.chat.type in ('private'))
 async def process_user_list_command(message: types.Message):
     if message.from_user.id == MY_ID:
         text = ''
         for chat in Session.query(Chats).all():
             chat_text = ''
-            for user in Session.query(Karma).filter(Karma.chat_id == chat.chat_id).all():
+            for user in Session.query(Karma).filter(Karma.chat_id == chat.chat_id).order_by(Karma.karma.desc()).all():
                 current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
                 chat_text = chat_text + MESSAGES['user_karma'].format(name=prettyUsername(current_user.name,
                                                                                           current_user.username),
-                                                                      karma=str(user.karma))
+                                                                      karma=str(user.karma)) + '\n'
             text = text + MESSAGES['user_chat_list'].format(text=chat_text, name=chat.name)
         await message.reply(MESSAGES['user_list'].format(text=text), reply=False, disable_web_page_preview=True)
 
 
-@dp.message_handler(commands=['leave'])
+@dp.message_handler(commands=['leave'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_user_list_command(message: types.Message):
     if message.from_user.id == MY_ID:
         await bot.leave_chat(message.chat.id)
