@@ -95,8 +95,7 @@ async def process_src_command(message: types.Message):
 
 @dp.message_handler(commands=['advice'])
 async def process_advice_command(message: types.Message):
-    if message.chat.type in ('group', 'supergroup'):
-        add_user_chat(message.from_user, message.chat)
+    add_user_chat(message.from_user, message.chat)
     if message.chat.type in ('group', 'supergroup') and advices_limit_counter(message.from_user.id):
         to_del = await message.reply(MESSAGES['delete_template'].format(
             text=MESSAGES['limit_advice_is_over'].format(limit=LIMIT_ADVICE), time=TIME_TO_SLEEP),reply=False)
@@ -123,8 +122,7 @@ async def process_advice_command(message: types.Message):
 
 @dp.message_handler(commands=['joke'])
 async def process_joke_command(message: types.Message):
-    if message.chat.type in ('group', 'supergroup'):
-        add_user_chat(message.from_user, message.chat)
+    add_user_chat(message.from_user, message.chat)
     if message.chat.type in ('group', 'supergroup') and jokes_limit_counter(message.chat.id):
         to_del = await message.reply(MESSAGES['delete_template'].format(
             text=MESSAGES['limit_joke_is_over'].format(limit=LIMIT_JOKE), time=TIME_TO_SLEEP), reply=False)
@@ -194,8 +192,7 @@ async def process_callback_next_joke(callback_query: types.CallbackQuery):
 
 @dp.message_handler(commands=['me'])
 async def process_me_command(message: types.Message):
-    if message.chat.type in ('group', 'supergroup'):
-        add_user_chat(message.from_user, message.chat)
+    add_user_chat(message.from_user, message.chat)
     chat_text = ''
     for user in Session.query(Karma).filter(Karma.user_id == message.from_user.id).all():
         current_chat = Session.query(Chats).filter(Chats.chat_id == user.chat_id).one()
