@@ -25,7 +25,7 @@ from db_map import Users, Chats, Karma
 
 from functions import prettyUsername, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
     new_voting, vote, karma_in_chat_text, current_state_vote, pagination_voting, trigger, triggers_list, new_trigger, \
-    delete_trigger, change_chat_status, chat_status, vote_new
+    delete_trigger, change_chat_status, chat_status, vote_new, current_count_users_in_chat
 from antimat import matfilter
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
@@ -203,7 +203,8 @@ async def process_me_command(message: types.Message):
     try:
         await bot.send_message(message.from_user.id, MESSAGES['chat_list'].format(text=chat_text),
                                disable_web_page_preview=True)
-        await message.delete()
+        if message.chat.type in ('group', 'supergroup'):
+            await message.delete()
     except:
         to_del = await message.reply(MESSAGES['delete_template'].format(
             text=MESSAGES['only_private'], time=TIME_TO_SLEEP), reply=False)
@@ -217,8 +218,9 @@ async def process_user_list_command(message: types.Message):
     if message.from_user.id == MY_ID:
         text = ''
         for chat in Session.query(Chats).all():
-            chat_text = karma_in_chat_text(chat.chat_id)
-            text = text + chat_text + '\n'
+            if current_count_users_in_chat(message.chat.id):
+                chat_text = karma_in_chat_text(chat.chat_id)
+                text = text + chat_text + '\n'
         await message.reply(MESSAGES['user_list'].format(text=text), reply=False, disable_web_page_preview=True)
 
 
@@ -237,75 +239,93 @@ async def process_add_command(message: types.Message):
 @dp.message_handler(commands=['dislike'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_dislike_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    if message.reply_to_message:
-        if message.reply_to_message.from_user.id == message.from_user.id:
-            to_del = await message.reply(MESSAGES['delete_template'].format(
-                text=MESSAGES['not_for_self'], time=TIME_TO_SLEEP), reply=False)
-            await message.delete()
-            await asyncio.sleep(TIME_TO_SLEEP)
-            await to_del.delete()
+    if current_count_users_in_chat(message.chat.id):
+        if message.reply_to_message:
+            if message.reply_to_message.from_user.id == message.from_user.id:
+                to_del = await message.reply(MESSAGES['delete_template'].format(
+                    text=MESSAGES['not_for_self'], time=TIME_TO_SLEEP), reply=False)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+            else:
+                add_user_chat(message.reply_to_message.from_user, message.chat)
+                vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, 0, message.chat.id)
+                mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+                await message.delete()
+                mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
+                                           reply_markup=mess_inner[1])
+                await asyncio.sleep(TIME_TO_VOTE * 60)
+                mess_inner = current_state_vote(TIME_TO_VOTE, vote_id, end=1)
+                try:
+                    await bot.delete_message(mess.chat.id, mess.message_id)
+                finally:
+                    await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
         else:
-            add_user_chat(message.reply_to_message.from_user, message.chat)
-            vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, 0, message.chat.id)
-            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+            keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, '0', 'next')
+            to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['dislike_keyboard'].format(
+                name=prettyUsername(message.from_user.full_name, message.from_user.username)),
+                                                                            time=TIME_TO_SELECT),
+                                         reply=False, disable_web_page_preview=True, reply_markup=keyboard)
             await message.delete()
-            mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
-                                       reply_markup=mess_inner[1])
-            await asyncio.sleep(TIME_TO_VOTE * 60)
-            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id, end=1)
+            await asyncio.sleep(TIME_TO_SELECT)
             try:
-                await bot.delete_message(mess.chat.id, mess.message_id)
-            finally:
-                await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
+                await to_del.delete()
+            except:
+                pass
     else:
-        keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, '0', 'next')
-        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['dislike_keyboard'].format(
-            name=prettyUsername(message.from_user.full_name, message.from_user.username)),
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['count_less'],
                                                                         time=TIME_TO_SELECT),
-                                     reply=False, disable_web_page_preview=True, reply_markup=keyboard)
+                                     reply=False,
+                                     disable_web_page_preview=True)
         await message.delete()
         await asyncio.sleep(TIME_TO_SELECT)
-        try:
-            await to_del.delete()
-        except:
-            pass
+        await to_del.delete()
 
 
 @dp.message_handler(commands=['like'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    if message.reply_to_message:
-        if message.reply_to_message.from_user.id == message.from_user.id:
-            to_del = await message.reply(MESSAGES['delete_template'].format(
-                text=MESSAGES['not_for_self'], time=TIME_TO_SLEEP), reply=False)
-            await message.delete()
-            await asyncio.sleep(TIME_TO_SLEEP)
-            await to_del.delete()
+    if current_count_users_in_chat(message.chat.id):
+        if message.reply_to_message:
+            if message.reply_to_message.from_user.id == message.from_user.id:
+                to_del = await message.reply(MESSAGES['delete_template'].format(
+                    text=MESSAGES['not_for_self'], time=TIME_TO_SLEEP), reply=False)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+            else:
+                add_user_chat(message.reply_to_message.from_user, message.chat)
+                vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, '1', message.chat.id)
+                mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+                await message.delete()
+                mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
+                                                          reply_markup=mess_inner[1])
+                await asyncio.sleep(TIME_TO_VOTE * 60)
+                mess_inner = current_state_vote(TIME_TO_VOTE, vote_id, end=1)
+                try:
+                    await bot.delete_message(mess.chat.id, mess.message_id)
+                finally:
+                    await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
         else:
-            add_user_chat(message.reply_to_message.from_user, message.chat)
-            vote_id = new_voting(message.from_user.id, message.reply_to_message.from_user.id, '1', message.chat.id)
-            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id)
+            keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, '1', 'next')
+            to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['like_keyboard'].format(
+                name=prettyUsername(message.from_user.full_name, message.from_user.username)),
+                                                                            time=TIME_TO_SELECT),
+                                         reply=False, disable_web_page_preview=True, reply_markup=keyboard)
             await message.delete()
-            mess = await message.reply(mess_inner[0], reply=False, disable_web_page_preview=True,
-                                                      reply_markup=mess_inner[1])
-            await asyncio.sleep(TIME_TO_VOTE * 60)
-            mess_inner = current_state_vote(TIME_TO_VOTE, vote_id, end=1)
+            await asyncio.sleep(TIME_TO_SELECT)
             try:
-                await bot.delete_message(mess.chat.id, mess.message_id)
-            finally:
-                await bot.send_message(mess.chat.id, mess_inner[0], disable_web_page_preview=True)
+                await to_del.delete()
+            except:
+                pass
     else:
-        keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, '1', 'next')
-        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['like_keyboard'].format(
-            name=prettyUsername(message.from_user.full_name, message.from_user.username)),
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['count_less'],
                                                                         time=TIME_TO_SELECT),
-                                     reply=False, disable_web_page_preview=True, reply_markup=keyboard)
+                                     reply=False,
+                                     disable_web_page_preview=True)
         await message.delete()
         await asyncio.sleep(TIME_TO_SELECT)
-        try:
-            await to_del.delete()
-        except:
-            pass
+        await to_del.delete()
 
 
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('like-'))
@@ -415,13 +435,22 @@ async def process_callback_prev(callback_query: types.CallbackQuery):
 
 @dp.message_handler(commands=['karma'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
-    add_user_chat(message.from_user, message.chat)
-    to_del = await message.reply(MESSAGES['delete_template'].format(text=karma_in_chat_text(message.chat.id),
-                                                                    time=TIME_TO_SELECT), reply=False,
-                                 disable_web_page_preview=True)
-    await message.delete()
-    await asyncio.sleep(TIME_TO_SELECT)
-    await to_del.delete()
+    if current_count_users_in_chat(message.chat.id):
+        add_user_chat(message.from_user, message.chat)
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=karma_in_chat_text(message.chat.id),
+                                                                        time=TIME_TO_SELECT), reply=False,
+                                     disable_web_page_preview=True)
+        await message.delete()
+        await asyncio.sleep(TIME_TO_SELECT)
+        await to_del.delete()
+    else:
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['count_less_karma'],
+                                                                        time=TIME_TO_SELECT),
+                                     reply=False,
+                                     disable_web_page_preview=True)
+        await message.delete()
+        await asyncio.sleep(TIME_TO_SELECT)
+        await to_del.delete()
 
 
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('none'))
