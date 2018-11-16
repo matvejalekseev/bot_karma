@@ -322,7 +322,7 @@ def current_state_vote(time, vote_id, end=0):
             return text, inline_kb
 
 
-def karma_in_chat_text(chat_id, time):
+def karma_in_chat_text(chat_id):
     text = ''
     i = 1
     chat = Session.query(Chats).filter(Chats.chat_id == chat_id).one()
@@ -340,8 +340,7 @@ def karma_in_chat_text(chat_id, time):
             text = text + '\n' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
                                                                karma=str(karma.karma))
         i += 1
-    return MESSAGES['delete_template'].format(text=MESSAGES['karma'].format(name=chat.name, text=text),
-                                              time=time)
+    return MESSAGES['karma'].format(name=chat.name, text=text)
 
 
 def new_trigger(name, text, chat_id, media_id, type):

@@ -217,13 +217,8 @@ async def process_user_list_command(message: types.Message):
     if message.from_user.id == MY_ID:
         text = ''
         for chat in Session.query(Chats).all():
-            chat_text = ''
-            for user in Session.query(Karma).filter(Karma.chat_id == chat.chat_id).order_by(Karma.karma.desc()).all():
-                current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-                chat_text = chat_text + MESSAGES['user_karma'].format(name=prettyUsername(current_user.name,
-                                                                                          current_user.username),
-                                                                      karma=str(user.karma)) + '\n'
-            text = text + MESSAGES['user_chat_list'].format(text=chat_text, name=chat.name)
+            chat_text = karma_in_chat_text(chat.chat_id)
+            text = text + chat_text
         await message.reply(MESSAGES['user_list'].format(text=text), reply=False, disable_web_page_preview=True)
 
 
@@ -421,7 +416,8 @@ async def process_callback_prev(callback_query: types.CallbackQuery):
 @dp.message_handler(commands=['karma'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    to_del = await message.reply(karma_in_chat_text(message.chat.id, TIME_TO_SELECT), reply=False,
+    to_del = await message.reply(MESSAGES['delete_template'].format(text=karma_in_chat_text(message.chat.id),
+                                                                    time=TIME_TO_SELECT), reply=False,
                                  disable_web_page_preview=True)
     await message.delete()
     await asyncio.sleep(TIME_TO_SELECT)
