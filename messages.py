@@ -124,6 +124,8 @@ triggers_list = '''\
 error_name_trigger = 'Неверный формат имени триггера'
 error_text_trigger = 'Неверный формат сообщения'
 not_vote_yourself = 'Не за себя, друг, не за себя...'
+count_less = 'Да чего тут голосовать то, народа мало'
+count_less_karma = 'Зовите ещё народ и начнём считать'
 
 MESSAGES = {
         'hello': hello,
@@ -178,6 +180,8 @@ MESSAGES = {
         'error_name_trigger': error_name_trigger,
         'error_text_trigger': error_text_trigger,
         'not_vote_yourself': not_vote_yourself,
+        'count_less': count_less,
+        'count_less_karma': count_less_karma,
 
 }
 

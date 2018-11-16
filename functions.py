@@ -162,31 +162,32 @@ def new_voting(init, candidate, type, chat):
 
 
 def add_user_chat(user, chat):
-    if not Session.query(Users).filter(Users.user_id == user.id).all():
-        user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
-        session = Session()
-        try:
-            session.add(user_current)
-            session.commit()
-        finally:
-            session.close()
-    else:
-        session = Session()
-        user_current = session.query(Users).filter(Users.user_id == user.id).one()
-        user_current.username = user.username
-        user_current.name = user.full_name
-        try:
-            session.commit()
-        finally:
-            session.close()
-    if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
-        karma = Karma(user_id=user.id, chat_id=chat.id)
-        session = Session()
-        try:
-            session.add(karma)
-            session.commit()
-        finally:
-            session.close()
+    if chat.type in ('group', 'supergroup'):
+        if not Session.query(Users).filter(Users.user_id == user.id).all():
+            user_current = Users(user_id=user.id, name=user.full_name, username=user.username)
+            session = Session()
+            try:
+                session.add(user_current)
+                session.commit()
+            finally:
+                session.close()
+        else:
+            session = Session()
+            user_current = session.query(Users).filter(Users.user_id == user.id).one()
+            user_current.username = user.username
+            user_current.name = user.full_name
+            try:
+                session.commit()
+            finally:
+                session.close()
+        if not Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
+            karma = Karma(user_id=user.id, chat_id=chat.id)
+            session = Session()
+            try:
+                session.add(karma)
+                session.commit()
+            finally:
+                session.close()
 
 
 def prettyUsername(n, un):
@@ -244,6 +245,11 @@ def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
     if count > limit:
         inline_kb.row(inline_btn_1, inline_btn_2, inline_btn_3)
     return inline_kb
+
+
+def current_count_users_in_chat(chat_id):
+    count = Session.query(Karma).filter(Karma.chat_id == chat_id).count()
+    return count > 3
 
 
 def current_state_vote(time, vote_id, end=0):
