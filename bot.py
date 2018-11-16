@@ -218,7 +218,7 @@ async def process_user_list_command(message: types.Message):
         text = ''
         for chat in Session.query(Chats).all():
             chat_text = karma_in_chat_text(chat.chat_id)
-            text = text + chat_text
+            text = text + chat_text + '\n'
         await message.reply(MESSAGES['user_list'].format(text=text), reply=False, disable_web_page_preview=True)
 
 
