@@ -17,6 +17,8 @@ import asyncio
 import logging
 import apiai
 
+from xml.dom import minidom
+
 
 from messages import MESSAGES
 from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID, LIMIT_INLINE_BTN, TIME_TO_SLEEP, \
@@ -42,6 +44,12 @@ session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 
 limit_inline_btn = LIMIT_INLINE_BTN
+
+
+def save_xml(filename, xml_code):
+    xml = minidom.parseString(xml_code).toxml()
+    with open(filename, 'w') as xml_file:
+        xml_file.write(xml)
 
 
 async def shutdown(dispatcher: Dispatcher):
@@ -96,21 +104,17 @@ async def process_src_command(message: types.Message):
 @dp.message_handler(commands=['sign'])
 async def process_src_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    endpoint = "http://127.0.0.1:5000/sign"
+    endpoint = "https://ips-test.rosminzdrav.ru/d9a19022dfdb0"
     login_template = message.reply_to_message.text
     body = login_template.encode('utf-8')
     async with aiohttp.ClientSession() as session:
         session.headers = {"Content-Type": "text/xml; charset=utf-8"}
         session.headers.update({"Content-Length": str(len(body))})
         async with session.post(url=endpoint, verify_ssl=False, data=body) as resp:
-            text = await resp.text()
-            print(text)
-            to_del = await bot.send_message(message.chat.id, "``` " + text + " ```",
-                                            parse_mode=types.ParseMode.MARKDOWN,
-                                            reply_to_message_id=message.reply_to_message.message_id)
+            save_xml("signed.xml", await resp.text())
+            await bot.send_document(message.chat.id, open("signed.xml", 'rb'))
     await message.delete()
-    await asyncio.sleep(TIME_TO_SELECT)
-    await to_del.delete()
+
 
 @dp.message_handler(commands=['advice'])
 async def process_advice_command(message: types.Message):
@@ -852,6 +856,7 @@ async def process_another_message(message: types.Message):
                 session.close()
             await message.reply(MESSAGES['random_dislike'], disable_web_page_preview=True)
 
+asyncio.subprocess.Popen("python3 receiver.py", shell=True)
 
 if __name__ == '__main__':
     executor.start_polling(dp, on_shutdown=shutdown)
