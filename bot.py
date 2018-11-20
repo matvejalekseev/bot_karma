@@ -5,11 +5,6 @@ import json
 import aiohttp
 import re
 
-from spyne import Application, rpc, ServiceBase, Unicode
-from lxml import etree
-from spyne.protocol.soap import Soap12
-from spyne.server.wsgi import WsgiApplication
-
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaDocument
