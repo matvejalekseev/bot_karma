@@ -102,18 +102,19 @@ async def process_src_command(message: types.Message):
     await to_del.delete()
 
 
-@dp.message_handler(commands=['sign'])
+@dp.message_handler(commands=['sign'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_src_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    endpoint = "https://ips-test.rosminzdrav.ru/d9a19022dfdb0"
-    login_template = message.reply_to_message.text
-    body = login_template.encode('utf-8')
-    async with aiohttp.ClientSession() as session:
-        session.headers = {"Content-Type": "text/xml; charset=utf-8"}
-        session.headers.update({"Content-Length": str(len(body))})
-        async with session.post(url=endpoint, verify_ssl=False, data=body) as resp:
-            save_xml("signed.xml", await resp.text())
-            await bot.send_document(message.chat.id, open("signed.xml", 'rb'))
+    if chat_status(message.chat.id) == 1:
+        endpoint = "https://ips-test.rosminzdrav.ru/d9a19022dfdb0"
+        login_template = message.reply_to_message.text
+        body = login_template.encode('utf-8')
+        async with aiohttp.ClientSession() as session:
+            session.headers = {"Content-Type": "text/xml; charset=utf-8"}
+            session.headers.update({"Content-Length": str(len(body))})
+            async with session.post(url=endpoint, verify_ssl=False, data=body) as resp:
+                save_xml("signed.xml", await resp.text())
+                await bot.send_document(message.chat.id, open("signed.xml", 'rb'))
     await message.delete()
 
 
