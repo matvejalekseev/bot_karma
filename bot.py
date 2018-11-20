@@ -5,11 +5,16 @@ import json
 import aiohttp
 import re
 
+from spyne import Application, rpc, ServiceBase, Unicode
+from lxml import etree
+from spyne.protocol.soap import Soap12
+from spyne.server.wsgi import WsgiApplication
+
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
-from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, input_media, InputMediaDocument
+from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaDocument
 from aiogram.utils import executor
-from sqlalchemy import create_engine, and_, desc
+from sqlalchemy import create_engine, and_
 from sqlalchemy.orm import scoped_session, sessionmaker
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
@@ -24,7 +29,7 @@ from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID,
 from db_map import Users, Chats, Karma
 
 from functions import prettyUsername, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
-    new_voting, vote, karma_in_chat_text, current_state_vote, pagination_voting, trigger, triggers_list, new_trigger, \
+    new_voting, karma_in_chat_text, current_state_vote, pagination_voting, trigger, triggers_list, new_trigger, \
     delete_trigger, change_chat_status, chat_status, vote_new, current_count_users_in_chat
 from antimat import matfilter
 
@@ -92,6 +97,25 @@ async def process_src_command(message: types.Message):
     await asyncio.sleep(TIME_TO_SELECT)
     await to_del.delete()
 
+
+@dp.message_handler(commands=['sign'])
+async def process_src_command(message: types.Message):
+    add_user_chat(message.from_user, message.chat)
+    endpoint = "http://127.0.0.1:5000/sign"
+    login_template = message.reply_to_message.text
+    body = login_template.encode('utf-8')
+    async with aiohttp.ClientSession() as session:
+        session.headers = {"Content-Type": "text/xml; charset=utf-8"}
+        session.headers.update({"Content-Length": str(len(body))})
+        async with session.post(url=endpoint, verify_ssl=False, data=body) as resp:
+            text = await resp.text()
+            print(text)
+            to_del = await bot.send_message(message.chat.id, "``` " + text + " ```",
+                                            parse_mode=types.ParseMode.MARKDOWN,
+                                            reply_to_message_id=message.reply_to_message.message_id)
+    await message.delete()
+    await asyncio.sleep(TIME_TO_SELECT)
+    await to_del.delete()
 
 @dp.message_handler(commands=['advice'])
 async def process_advice_command(message: types.Message):
