@@ -105,17 +105,40 @@ async def process_src_command(message: types.Message):
 @dp.message_handler(commands=['sign'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_src_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    if chat_status(message.chat.id) == 1:
-        endpoint = "https://ips-test.rosminzdrav.ru/d9a19022dfdb0"
-        login_template = message.reply_to_message.text
-        body = login_template.encode('utf-8')
-        async with aiohttp.ClientSession() as session:
-            session.headers = {"Content-Type": "text/xml; charset=utf-8"}
-            session.headers.update({"Content-Length": str(len(body))})
-            async with session.post(url=endpoint, verify_ssl=False, data=body) as resp:
-                save_xml("signed.xml", await resp.text())
-                await bot.send_document(message.chat.id, open("signed.xml", 'rb'))
-    await message.delete()
+    try:
+        if chat_status(message.chat.id) == 1:
+            endpoint = "https://ips-test.rosminzdrav.ru/d9a19022dfdb0"
+            k = 0
+            if message.reply_to_message.document:
+                file = await bot.get_file(message.reply_to_message.document.file_id)
+                if file.file_size < 5*1024*1024 and file.file_path.split('.', 1)[1] == 'xml':
+                    await file.download("to_sign.xml")
+                    login_template = open("to_sign.xml", 'rb').read()
+                    k = 1
+            else:
+                login_template = message.reply_to_message.text
+                login_template = login_template.encode('utf-8')
+                k = 1
+            if k == 1:
+                async with aiohttp.ClientSession() as session:
+                    session.headers = {"Content-Type": "text/xml; charset=utf-8"}
+                    session.headers.update({"Content-Length": str(len(login_template))})
+                    async with session.post(url=endpoint, verify_ssl=False, data=login_template) as resp:
+                        save_xml("signed.xml", await resp.text())
+                        await bot.send_document(message.chat.id, open("signed.xml", 'rb'),
+                                                reply_to_message_id=message.reply_to_message.message_id)
+            else:
+                to_del = await message.reply(MESSAGES['delete_template'].format(
+                    text=MESSAGES['file_is_error'], time=TIME_TO_SLEEP), reply=False)
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+        await message.delete()
+    except:
+        await message.delete()
+        to_del = await message.reply(MESSAGES['delete_template'].format(
+            text=MESSAGES['file_is_error'], time=TIME_TO_SLEEP), reply=False)
+        await asyncio.sleep(TIME_TO_SLEEP)
+        await to_del.delete()
 
 
 @dp.message_handler(commands=['advice'])
@@ -858,7 +881,7 @@ async def process_another_message(message: types.Message):
                 session.close()
             await message.reply(MESSAGES['random_dislike'], disable_web_page_preview=True)
 
-subprocess.Popen("python3 receiver.py", shell=True)
+subprocess.Popen("python3.6 receiver.py", shell=True)
 
 if __name__ == '__main__':
     executor.start_polling(dp, on_shutdown=shutdown)
