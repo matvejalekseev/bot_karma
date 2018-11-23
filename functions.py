@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from messages import MESSAGES
-from sqlalchemy import create_engine, and_, func, desc
+from sqlalchemy import create_engine, and_, func, desc, asc
 from sqlalchemy.orm import scoped_session, sessionmaker
 from db_map import Users, Chats, Karma, Votings, Votes, Triggers
 from conf import DB_FILENAME, MY_ID, LIMIT_ADVICE, LIMIT_JOKE
@@ -209,37 +209,45 @@ def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
     else:
         users = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
                                                  (Karma.user_id != user_id),
-                                                 (Karma.id <= code))).order_by(Karma.id).limit(limit).all()
+                                                 (Karma.id < code))).order_by(desc(Karma.id)).limit(limit).all()
+
     count_next = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
                                              (Karma.user_id != user_id),
                                              (Karma.id > code))).count()
     count_prev = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
-                                                (Karma.user_id != user_id),
-                                                (Karma.id <= code))).count()
+                                                  (Karma.user_id != user_id),
+                                                  (Karma.id < code))).count()
     count = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
-                                                  (Karma.user_id != user_id))).count()
+                                             (Karma.user_id != user_id))).count()
     if type_vote == '1':
         command = 'like-'
     else:
         command = 'dislike-'
     inline_kb = InlineKeyboardMarkup(row_width=1)
+    users_id = []
     for user in users:
-        current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+        users_id.append(user.id)
+    prev = min(users_id)
+    next = max(users_id)
+    users_id.sort()
+    for user in users_id:
+        userId = Session.query(Karma).filter(Karma.id == user).one()
+        current_user = Session.query(Users).filter(Users.user_id == userId.user_id).one()
         inline_btn = InlineKeyboardButton(current_user.name, callback_data=command + str(round(user_id)) + '-'
                                                                           + str(round(current_user.user_id)))
         inline_kb.add(inline_btn)
+
     if code == 0:
         inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
     elif count_prev <= limit and type_step == 'prev':
         inline_btn_1 = InlineKeyboardButton(' ', callback_data='none')
     else:
-        inline_btn_1 = InlineKeyboardButton('<', callback_data='prev-' + str(round(user_id)) + '-' + str(code)
-                                                               + '-' + str(type_vote))
+        comand = 'prev-' + str(round(user_id)) + '-' + str(prev) + '-' + str(type_vote)
+        inline_btn_1 = InlineKeyboardButton('<', callback_data=comand)
     inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
     if count_next > limit or type_step == 'prev':
-        inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user_id)) + '-'
-                                                               + str(round(user.id))
-                                                               + '-' + str(type_vote))
+        comand = 'next-' + str(round(user_id)) + '-' + str(next) + '-' + str(type_vote)
+        inline_btn_3 = InlineKeyboardButton('>', callback_data=comand)
     else:
         inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
     if count > limit:
