@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from messages import MESSAGES
-from sqlalchemy import create_engine, and_, func
+from sqlalchemy import create_engine, and_, func, desc
 from sqlalchemy.orm import scoped_session, sessionmaker
 from db_map import Users, Chats, Karma, Votings, Votes, Triggers
 from conf import DB_FILENAME, MY_ID, LIMIT_ADVICE, LIMIT_JOKE
@@ -209,7 +209,7 @@ def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
     else:
         users = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
                                                  (Karma.user_id != user_id),
-                                                 (Karma.id <= code))).order_by(Karma.id).limit(limit).all()
+                                                 (Karma.id <= code))).order_by(desc(Karma.id)).limit(limit).all()
     count_next = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
                                              (Karma.user_id != user_id),
                                              (Karma.id > code))).count()
