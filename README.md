@@ -25,3 +25,12 @@ aiosocksy - http://flask.pocoo.org/</br>
 ```nano conf_template.py```</br>
 Выполнение инициализирующего скрипта</br>
 ```python3 init.py```</br>
+Добавление в базу индексов:</br>
+```CREATE UNIQUE INDEX votings_index_ids on Votings (id);```</br>
+```CREATE UNIQUE INDEX votes_index_ids on Votes (id);```</br>
+```CREATE UNIQUE INDEX chats_index_ids on Chats (id);```</br>
+```CREATE UNIQUE INDEX karma_index_ids on Karma (id);```</br>
+```CREATE UNIQUE INDEX triggers_index_ids on Triggers (id);```</br>
+```CREATE UNIQUE INDEX users_index_ids on Users (id);```</br>
+```CREATE UNIQUE INDEX users_index_user_ids on Users (user_id);```</br>
+```CREATE UNIQUE INDEX triggers_index_name_chat_ids on Triggers (name, chat_id);```</br>
