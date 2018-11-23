@@ -231,7 +231,7 @@ def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
     users_id.sort()
 
     for user in users_id:
-        current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
+        current_user = Session.query(Users).filter(Users.user_id == user).one()
         inline_btn = InlineKeyboardButton(current_user.name, callback_data=command + str(round(user_id)) + '-'
                                                                            + str(round(current_user.user_id)))
         inline_kb.add(inline_btn)
