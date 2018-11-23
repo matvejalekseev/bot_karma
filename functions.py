@@ -245,7 +245,7 @@ def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
     inline_btn_2 = InlineKeyboardButton(' ', callback_data='none')
     if count_next > limit or type_step == 'prev':
         inline_btn_3 = InlineKeyboardButton('>', callback_data='next-' + str(round(user_id)) + '-'
-                                                               + str(round(user.id))
+                                                               + str(round(user))
                                                                + '-' + str(type_vote))
     else:
         inline_btn_3 = InlineKeyboardButton(' ', callback_data='none')
