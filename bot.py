@@ -770,7 +770,7 @@ async def process_edit_message(message: types.Message):
 @dp.message_handler(func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_another_message(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    i = random.randrange(500)
+    i = random.randrange(3)
     if message.text[0] == '!':
         trig = trigger(message.text[1:].lower(), message.chat.id)
         if trig:
