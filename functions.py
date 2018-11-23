@@ -226,7 +226,7 @@ def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
 
     users_id = []
     for user in users:
-        users_id.append(user.id)
+        users_id.append(user.user_id)
 
     users_id.sort()
 
