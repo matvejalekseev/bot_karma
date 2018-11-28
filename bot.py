@@ -194,8 +194,10 @@ async def process_joke_command(message: types.Message):
                             inline_kb = InlineKeyboardMarkup(row_width=1)
                             inline_btn = InlineKeyboardButton('🔄', callback_data='next-joke')
                             inline_kb.add(inline_btn)
-                        await bot.send_document(chat_id=message.chat.id, caption=response[j]['description'],
-                                                document=response[j]['videoURL'], reply_markup=inline_kb)
+                        await bot.send_document(chat_id=message.chat.id,
+                                                caption=MESSAGES['joke_template'].format(joke=response[j]['description']),
+                                                document=response[j]['videoURL'],
+                                                reply_markup=inline_kb)
                     else:
                         to_del = await message.reply(MESSAGES['delete_template'].format(
                                 text=MESSAGES['error'], time=TIME_TO_SLEEP), reply=False)
