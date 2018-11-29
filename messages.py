@@ -16,6 +16,10 @@ advice_template = '''\
 {name}, {advice}
 
 <i>Получить совет</i> /advice'''
+joke_template = '''\
+{joke}
+
+<i>Ещё шутка</i> /joke'''
 not_for_self = 'Только не себя 😶'
 not_for_me = 'Только не меня'
 like_select = '''\
@@ -184,6 +188,7 @@ MESSAGES = {
         'count_less': count_less,
         'count_less_karma': count_less_karma,
         'file_is_error': file_is_error,
+        'joke_template': joke_template,
 
 }
 
