@@ -674,7 +674,7 @@ async def process_restrict_command(message: types.Message):
                     await asyncio.sleep(TIME_TO_SLEEP)
                     await to_del.delete()
                 else:
-                    new_trigger(name, message.reply_to_message.html_text, message.chat.id, None,'text')
+                    new_trigger(name, message.reply_to_message.html_text, message.chat.id, None, 'text')
                     to_del = await message.reply_to_message.reply(
                         MESSAGES['delete_template'].format(text=MESSAGES['trigger_save'],
                                                            time=TIME_TO_SLEEP),

@@ -370,7 +370,7 @@ def new_trigger(name, text, chat_id, media_id, type):
         session = Session()
         trigger_current = session.query(Triggers).filter(and_((Triggers.name == name.lower()), (Triggers.chat_id == chat_id)))\
             .one()
-        trigger_current.text = text.lower()
+        trigger_current.text = text
         trigger_current.media_id = media_id
         trigger_current.type = type
         try:
