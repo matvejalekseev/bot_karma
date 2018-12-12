@@ -26,7 +26,7 @@ from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID,
     LIMIT_ADVICE, LIMIT_JOKE, TIME_TO_SELECT, TIME_TO_VOTE
 from db_map import Users, Chats, Karma
 
-from functions import prettyUsername, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
+from functions import prettyUsername, prettyUsername_id, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
     new_voting, karma_in_chat_text, current_state_vote, pagination_voting, trigger, triggers_list, new_trigger, \
     delete_trigger, change_chat_status, chat_status, vote_new, current_count_users_in_chat
 from antimat import matfilter
@@ -154,8 +154,8 @@ async def process_advice_command(message: types.Message):
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.get('http://fucking-great-advice.ru/api/random') as resp:
-                    await message.reply(MESSAGES['advice_template'].format(name=prettyUsername(message.from_user.full_name,
-                                                                                                message.from_user.username),
+                    await message.reply(MESSAGES['advice_template'].format(name=prettyUsername_id(message.from_user.full_name,
+                                                                                                message.from_user.id),
                                          advice=(json.loads(await resp.text(), encoding="utf-8")['text'])), reply=False,
                                         disable_web_page_preview=True)
                     if message.chat.type in ('group', 'supergroup'):
@@ -310,7 +310,7 @@ async def process_dislike_command(message: types.Message):
         else:
             keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, '0', 'next')
             to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['dislike_keyboard'].format(
-                name=prettyUsername(message.from_user.full_name, message.from_user.username)),
+                name=prettyUsername_id(message.from_user.full_name, message.from_user.id)),
                                                                             time=TIME_TO_SELECT),
                                          reply=False, disable_web_page_preview=True, reply_markup=keyboard)
             await message.delete()
@@ -356,7 +356,7 @@ async def process_like_command(message: types.Message):
         else:
             keyboard = pagination_voting(0, message.chat.id, message.from_user.id, limit_inline_btn, '1', 'next')
             to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['like_keyboard'].format(
-                name=prettyUsername(message.from_user.full_name, message.from_user.username)),
+                name=prettyUsername_id(message.from_user.full_name, message.from_user.id)),
                                                                             time=TIME_TO_SELECT),
                                          reply=False, disable_web_page_preview=True, reply_markup=keyboard)
             await message.delete()
@@ -482,7 +482,7 @@ async def process_callback_prev(callback_query: types.CallbackQuery):
 
 @dp.message_handler(commands=['karma'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
-    if current_count_users_in_chat(message.chat.id):
+    #if current_count_users_in_chat(message.chat.id):
         add_user_chat(message.from_user, message.chat)
         to_del = await message.reply(MESSAGES['delete_template'].format(text=karma_in_chat_text(message.chat.id),
                                                                         time=TIME_TO_SELECT), reply=False,
@@ -490,14 +490,14 @@ async def process_like_command(message: types.Message):
         await message.delete()
         await asyncio.sleep(TIME_TO_SELECT)
         await to_del.delete()
-    else:
-        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['count_less_karma'],
-                                                                        time=TIME_TO_SELECT),
-                                     reply=False,
-                                     disable_web_page_preview=True)
-        await message.delete()
-        await asyncio.sleep(TIME_TO_SELECT)
-        await to_del.delete()
+    #else:
+    #   to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['count_less_karma'],
+    #                                                                    time=TIME_TO_SELECT),
+    #                                 reply=False,
+    #                                 disable_web_page_preview=True)
+    #    await message.delete()
+    #    await asyncio.sleep(TIME_TO_SELECT)
+    #    await to_del.delete()
 
 
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('none'))
@@ -552,7 +552,7 @@ async def process_kick_member(message: types.Message):
         if Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).all():
             Session.query(Karma).filter(and_((Karma.user_id == user.id), (Karma.chat_id == chat.id))).delete()
             Session.commit()
-        await bot.send_message(chat.id, MESSAGES['bye'].format(name=prettyUsername(user.full_name, user.username)),
+        await bot.send_message(chat.id, MESSAGES['bye'].format(name=prettyUsername_id(user.full_name, user.user_id)),
                                disable_web_page_preview=True)
 
 

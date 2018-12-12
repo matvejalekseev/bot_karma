@@ -201,6 +201,16 @@ def prettyUsername(n, un):
         return MESSAGES['error']
 
 
+def prettyUsername_id(n, id):
+    try:
+        if id:
+            user = '<a href="tg://user?id=' + str(round(id)) + '">' + n + '</a>'
+        else:
+            user = n
+        return user
+    except:
+        return MESSAGES['error']
+
 def pagination_voting(code, chat_id, user_id, limit, type_vote, type_step):
     if type_step == 'next':
         users = Session.query(Karma).filter(and_((Karma.chat_id == chat_id),
@@ -264,23 +274,23 @@ def current_state_vote(time, vote_id, end=0):
     voting = Session.query(Votings).filter(Votings.id == vote_id).one()
 
     user = Session.query(Users).filter(Users.user_id == voting.init_user_id).one()
-    user_prettyname = prettyUsername(user.name, user.username)
+    user_prettyname = prettyUsername_id(user.name, user.user_id)
 
     likes = Session.query(Users).filter(Users.user_id == voting.candidate_user_id).one()
-    likes_prettyname = prettyUsername(likes.name, likes.username)
+    likes_prettyname = prettyUsername_id(likes.name, likes.user_id)
 
     users_yes = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 1))).all()
     users_no = Session.query(Votes).filter(and_((Votes.vote_id == vote_id), (Votes.answer == 0))).all()
     yes_list = ''
     for user in users_yes:
         current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-        yes_list = yes_list + '\n' + prettyUsername(current_user.name, current_user.username)
+        yes_list = yes_list + '\n' + prettyUsername_id(current_user.name, current_user.user_id)
 
     count_user_in_chat = Session.query(Karma).filter(Karma.chat_id == voting.chat_id).count()
     no_list = ''
     for user in users_no:
         current_user = Session.query(Users).filter(Users.user_id == user.user_id).one()
-        no_list = no_list + '\n' + prettyUsername(current_user.name, current_user.username)
+        no_list = no_list + '\n' + prettyUsername_id(current_user.name, current_user.user_id)
 
     inline_kb = InlineKeyboardMarkup(row_width=1)
     inline_btn_yes = InlineKeyboardButton('Да - ' + str(len(users_yes)), callback_data='yes-' + str(vote_id))
@@ -345,13 +355,13 @@ def karma_in_chat_text(chat_id):
     for karma in Session.query(Karma).filter(Karma.chat_id == chat_id).order_by(Karma.karma.desc()).all():
         user = Session.query(Users).filter(Users.user_id == karma.user_id).one()
         if karma.karma == max:
-            text = text + '\n👑 ' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
+            text = text + '\n👑 ' + MESSAGES['user_karma'].format(name=prettyUsername_id(user.name, user.user_id),
                                                                   karma=str(karma.karma))
         elif karma.karma == min:
-            text = text + '\n💩 ' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
+            text = text + '\n💩 ' + MESSAGES['user_karma'].format(name=prettyUsername_id(user.name, user.user_id),
                                                                   karma=str(karma.karma))
         else:
-            text = text + '\n' + MESSAGES['user_karma'].format(name=prettyUsername(user.name, user.username),
+            text = text + '\n' + MESSAGES['user_karma'].format(name=prettyUsername_id(user.name, user.user_id),
                                                                karma=str(karma.karma))
         i += 1
     return MESSAGES['karma'].format(name=chat.name, text=text)
