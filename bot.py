@@ -482,7 +482,7 @@ async def process_callback_prev(callback_query: types.CallbackQuery):
 
 @dp.message_handler(commands=['karma'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_like_command(message: types.Message):
-    #if current_count_users_in_chat(message.chat.id):
+    if current_count_users_in_chat(message.chat.id):
         add_user_chat(message.from_user, message.chat)
         to_del = await message.reply(MESSAGES['delete_template'].format(text=karma_in_chat_text(message.chat.id),
                                                                         time=TIME_TO_SELECT), reply=False,
@@ -490,14 +490,14 @@ async def process_like_command(message: types.Message):
         await message.delete()
         await asyncio.sleep(TIME_TO_SELECT)
         await to_del.delete()
-    #else:
-    #   to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['count_less_karma'],
-    #                                                                    time=TIME_TO_SELECT),
-    #                                 reply=False,
-    #                                 disable_web_page_preview=True)
-    #    await message.delete()
-    #    await asyncio.sleep(TIME_TO_SELECT)
-    #    await to_del.delete()
+    else:
+        to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['count_less_karma'],
+                                                                        time=TIME_TO_SELECT),
+                                    reply=False,
+                                    disable_web_page_preview=True)
+        await message.delete()
+        await asyncio.sleep(TIME_TO_SELECT)
+        await to_del.delete()
 
 
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('none'))
