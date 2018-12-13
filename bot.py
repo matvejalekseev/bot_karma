@@ -6,6 +6,7 @@ import json
 import aiohttp
 import re
 
+import bs4 as bs4
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.types import ContentType, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaDocument
@@ -26,9 +27,9 @@ from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID,
     LIMIT_ADVICE, LIMIT_JOKE, TIME_TO_SELECT, TIME_TO_VOTE
 from db_map import Users, Chats, Karma
 
-from functions import prettyUsername, prettyUsername_id, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
+from functions import prettyUsername_id, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
     new_voting, karma_in_chat_text, current_state_vote, pagination_voting, trigger, triggers_list, new_trigger, \
-    delete_trigger, change_chat_status, chat_status, vote_new, current_count_users_in_chat
+    delete_trigger, change_chat_status, chat_status, vote_new, current_count_users_in_chat, fix_layout, is_need_fix_layout
 from antimat import matfilter
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
@@ -500,6 +501,35 @@ async def process_like_command(message: types.Message):
         await to_del.delete()
 
 
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('translate-yes-'))
+async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
+    add_user_chat(callback_query.from_user, callback_query.message.chat)
+    user_id = re.findall(r'\d+', callback_query.data)[0]
+    if str(callback_query.from_user.id) == user_id:
+        html = bs4.BeautifulSoup(callback_query.message.html_text)
+        text = html.find('pre').string
+        await callback_query.message.reply(MESSAGES['translate'].format(text=text,
+                                                                        user=prettyUsername_id(callback_query.from_user.full_name,
+                                                                                               callback_query.from_user.id)),
+                                           reply=False,
+                                           disable_web_page_preview=True)
+        await callback_query.message.delete()
+        await bot.answer_callback_query(callback_query.id, '')
+    else:
+        await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
+
+
+@dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('translate-no-'))
+async def process_callback_dislike_yes(callback_query: types.CallbackQuery):
+    add_user_chat(callback_query.from_user, callback_query.message.chat)
+    user_id = re.findall(r'\d+', callback_query.data)[0]
+    if str(callback_query.from_user.id) == user_id:
+        await callback_query.message.delete()
+        await bot.answer_callback_query(callback_query.id, '')
+    else:
+        await bot.answer_callback_query(callback_query.id, MESSAGES['not_for_you'])
+
+
 @dp.callback_query_handler(func=lambda c: c.data and c.data.startswith('none'))
 async def process_callback_none(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id, '')
@@ -797,6 +827,51 @@ async def process_another_message(message: types.Message):
             await bot.send_message(message.chat.id, response)
         else:
             await bot.send_message(message.chat.id, 'Я Вас не совсем понял!')
+    elif is_need_fix_layout(message.text):
+        if chat_status(message.chat.id) == 1 and len(matfilter(fix_layout(message.text))):
+            admins = await bot.get_chat_administrators(message.chat.id)
+            user = await bot.get_chat_member(message.chat.id, message.from_user.id)
+            if user in admins:
+                to_del = await message.reply(MESSAGES['delete_template'].format(
+                    text=MESSAGES['antimat'], time=TIME_TO_SLEEP),
+                    disable_web_page_preview=True, reply=False)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+            else:
+                await bot.restrict_chat_member(message.chat.id,
+                                               message.from_user.id,
+                                               can_send_messages=False,
+                                               can_add_web_page_previews=False,
+                                               can_send_media_messages=False,
+                                               can_send_other_messages=False)
+                to_del = await message.reply(MESSAGES['delete_template'].format(
+                    text=MESSAGES['ban_user'].format(time=TIME_TO_SELECT), time=TIME_TO_SLEEP),
+                    disable_web_page_preview=True, reply=False)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+                await asyncio.sleep(TIME_TO_SELECT - TIME_TO_SLEEP)
+                await bot.restrict_chat_member(message.chat.id,
+                                               message.from_user.id,
+                                               can_send_messages=True,
+                                               can_add_web_page_previews=True,
+                                               can_send_media_messages=True,
+                                               can_send_other_messages=True)
+        else:
+            inline_kb = InlineKeyboardMarkup(row_width=1)
+            inline_btn_yes = InlineKeyboardButton('Да', callback_data='translate-yes-' + str(round(message.from_user.id)))
+            inline_btn_no = InlineKeyboardButton('Нет', callback_data='translate-no-' + str(round(message.from_user.id)))
+            inline_kb.row(inline_btn_yes, inline_btn_no)
+            to_del = await message.reply(MESSAGES['delete_template'].format(text=fix_layout(message.text),
+                                                                            time=TIME_TO_SLEEP*3),
+                                         reply_markup=inline_kb,
+                                         disable_web_page_preview=True)
+            await asyncio.sleep(TIME_TO_SLEEP*3)
+            try:
+                await to_del.delete()
+            except:
+                pass
     elif chat_status(message.chat.id) == 1:
         if re.findall(r'\w+', message.text):
             if re.findall(r'\w+', message.text)[0].lower() == 'привет' and len(re.findall(r'\w+', message.text)) == 1:
@@ -861,27 +936,26 @@ async def process_another_message(message: types.Message):
             finally:
                 session.close()
             await message.reply(MESSAGES['random_dislike'], disable_web_page_preview=True)
-    else:
-        if i == 1:
-            session = Session()
-            karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
-                                                     (Karma.chat_id == message.chat.id))).one()
-            karma.karma += 1
-            try:
-                session.commit()
-            finally:
-                session.close()
-            await message.reply(MESSAGES['random_like'], disable_web_page_preview=True)
-        elif i == 2:
-            session = Session()
-            karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
-                                                     (Karma.chat_id == message.chat.id))).one()
-            karma.karma -= 1
-            try:
-                session.commit()
-            finally:
-                session.close()
-            await message.reply(MESSAGES['random_dislike'], disable_web_page_preview=True)
+    if i == 1:
+        session = Session()
+        karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
+                                                 (Karma.chat_id == message.chat.id))).one()
+        karma.karma += 1
+        try:
+            session.commit()
+        finally:
+            session.close()
+        await message.reply(MESSAGES['random_like'], disable_web_page_preview=True)
+    elif i == 2:
+        session = Session()
+        karma = session.query(Karma).filter(and_((Karma.user_id == message.from_user.id),
+                                                 (Karma.chat_id == message.chat.id))).one()
+        karma.karma -= 1
+        try:
+            session.commit()
+        finally:
+            session.close()
+        await message.reply(MESSAGES['random_dislike'], disable_web_page_preview=True)
 
 subprocess.Popen("python3.6 receiver.py", shell=True)
 

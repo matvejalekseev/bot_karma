@@ -131,6 +131,8 @@ not_vote_yourself = 'Не за себя, друг, не за себя...'
 count_less = 'Да чего тут голосовать то, народа мало'
 count_less_karma = 'Зовите ещё народ и начнём считать'
 file_is_error = 'Неверный формат файла'
+translate = '''{user} говорит:
+{text}'''
 
 MESSAGES = {
         'hello': hello,
@@ -189,6 +191,7 @@ MESSAGES = {
         'count_less_karma': count_less_karma,
         'file_is_error': file_is_error,
         'joke_template': joke_template,
+        'translate': translate,
 
 }
 

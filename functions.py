@@ -1,3 +1,5 @@
+import re
+
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from messages import MESSAGES
@@ -12,6 +14,10 @@ engine = create_engine(f'sqlite:///{DB_FILENAME}')
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 UTC = timezone('UTC')
+
+_eng_chars = u"~`!@#$%^&qwertyuiop[]asdfghjkl;'zxcvbnm,./QWERTYUIOP{}ASDFGHJKL:\"|ZXCVBNM<>?-*)(%|"
+_rus_chars = u"Ёё!\"№;%:?йцукенгшщзхъфывапролджэячсмитьбю.ЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭ/ЯЧСМИТЬБЮ,-*)(%\\"
+_trans_table = dict(zip(_eng_chars, _rus_chars))
 
 def date_now():
     return datetime.now(UTC).date()
@@ -199,6 +205,36 @@ def prettyUsername(n, un):
         return user
     except:
         return MESSAGES['error']
+
+
+def fix_layout(s):
+    str = '<pre>' + u''.join([_trans_table.get(c, c) for c in s]) + '</pre>'
+    return str
+
+
+def is_need_fix_layout(s):
+    i = 0
+    s = s.replace(" ", "")
+    s = s.replace("\n", "")
+    s = s.replace("*", "")
+    s = s.replace("(", "")
+    s = s.replace(")", "")
+    s = s.replace("&", "")
+    s = s.replace("^", "")
+    s = s.replace("$", "")
+    s = s.replace("@", "")
+    s = s.replace("-", "")
+    s = s.replace("_", "")
+    s = s.replace("=", "")
+    s = s.replace("+", "")
+    s = re.sub(r"\d+", "", s, flags=re.UNICODE)
+    if len(s) == 0:
+        return False
+    while i <= len(s)-1:
+        if s[i] not in _eng_chars:
+            return False
+        i += 1
+    return True
 
 
 def prettyUsername_id(n, id):
