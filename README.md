@@ -20,6 +20,9 @@ aiosocksy - https://pypi.org/project/aiosocksy/</br>
 aiosocksy - http://flask.pocoo.org/</br>
 ```pip3.6 install -U flask```
 
+bs4</br>
+```pip3.6 install -U bs4```
+
 # Первый запуск
 Настройка файла conf.py шаблон - conf_template.py</br>
 ```nano conf_template.py```</br>
