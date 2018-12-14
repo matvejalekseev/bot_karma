@@ -212,15 +212,21 @@ def fix_layout(s):
     return str
 
 
+def valid_email(email):
+  return bool(re.search(r"^[\w\.\+\-]+\@[\w]+\.[a-z]+$", email))
+
+
 def is_need_fix_layout(s):
     i = 0
+    if valid_email(s):
+        return False
+    if s[:4] == 'http':
+        return False
     s = s.replace("\n", "")
     s = re.sub(r"\s+", "", s, flags=re.UNICODE)
     s = re.sub(r"\W+", "", s, flags=re.UNICODE)
     s = re.sub(r"\d+", "", s, flags=re.UNICODE)
     if len(s) == 0:
-        return False
-    if s[:4] == 'http':
         return False
     while i <= len(s)-1:
         if s[i] not in _eng_chars:
