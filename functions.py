@@ -214,21 +214,13 @@ def fix_layout(s):
 
 def is_need_fix_layout(s):
     i = 0
-    s = s.replace(" ", "")
     s = s.replace("\n", "")
-    s = s.replace("*", "")
-    s = s.replace("(", "")
-    s = s.replace(")", "")
-    s = s.replace("&", "")
-    s = s.replace("^", "")
-    s = s.replace("$", "")
-    s = s.replace("@", "")
-    s = s.replace("-", "")
-    s = s.replace("_", "")
-    s = s.replace("=", "")
-    s = s.replace("+", "")
+    s = re.sub(r"\s+", "", s, flags=re.UNICODE)
+    s = re.sub(r"\W+", "", s, flags=re.UNICODE)
     s = re.sub(r"\d+", "", s, flags=re.UNICODE)
     if len(s) == 0:
+        return False
+    if s[:4] == 'http':
         return False
     while i <= len(s)-1:
         if s[i] not in _eng_chars:
