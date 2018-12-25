@@ -12,7 +12,6 @@ class Users(Base):
     username = Column('username', String(255))
     name = Column('name', String(255))
     status = Column('status', Integer)# 0 - Пользователь, 1 - Админ
-    last_advice = Column('last_advice', DateTime(timezone=True), default=func.now())
 
 
     def __init__(self, user_id, username=None, name=None, status=0):
@@ -52,6 +51,7 @@ class Karma(Base):
     chat_id = Column('chat_id', Numeric, ForeignKey('Chats.chat_id'))
     user_id = Column('user_id', Numeric, ForeignKey('Users.user_id'))
     karma = Column('karma', Integer)
+    last_advice = Column('last_advice', DateTime(timezone=True), default=func.now())
     count_advice = Column('count_requests', Integer, default=0)
     __table_args__ = (UniqueConstraint('user_id', 'chat_id', name='_chat_event_uc'),)
 
