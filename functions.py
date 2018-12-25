@@ -40,7 +40,7 @@ def advices_limit_counter(id, chat_id):
     else:
         if Session.query(Karma).filter(and_((Karma.user_id == id), (Karma.chat_id == chat_id))).one():
             session = Session()
-            user_current = session.query(Users).filter(Users.user_id == id).one()
+            user_current = session.query(Karma).filter(and_((Karma.user_id == id), (Karma.chat_id == chat_id))).one()
             if user_current.last_advice.date() == date_now():
                 if user_current.count_advice >= LIMIT_ADVICE:
                     return True
