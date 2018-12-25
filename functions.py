@@ -34,11 +34,11 @@ def is_str(s):
         return True
 
 
-def advices_limit_counter(id):
+def advices_limit_counter(id, chat_id):
     if id == MY_ID:
         return False
     else:
-        if Session.query(Users).filter(Users.user_id == id).one():
+        if Session.query(Karma).filter(and_((Karma.user_id == id), (Karma.chat_id == chat_id))).one():
             session = Session()
             user_current = session.query(Users).filter(Users.user_id == id).one()
             if user_current.last_advice.date() == date_now():

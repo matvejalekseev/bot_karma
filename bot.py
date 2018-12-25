@@ -145,7 +145,7 @@ async def process_src_command(message: types.Message):
 @dp.message_handler(commands=['advice'])
 async def process_advice_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
-    if message.chat.type in ('group', 'supergroup') and advices_limit_counter(message.from_user.id):
+    if message.chat.type in ('group', 'supergroup') and advices_limit_counter(message.from_user.id, message.chat.id):
         to_del = await message.reply(MESSAGES['delete_template'].format(
             text=MESSAGES['limit_advice_is_over'].format(limit=LIMIT_ADVICE), time=TIME_TO_SLEEP),reply=False)
         await message.delete()
