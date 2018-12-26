@@ -223,7 +223,7 @@ def is_need_fix_layout(s):
     if s[:4] == 'http':
         return False
     if s.lower().split(' ')[0] in DICT:
-        print('Yes')
+        return False
     s = s.replace("\n", "")
     s = re.sub(r"\s+", "", s, flags=re.UNICODE)
     s = re.sub(r"\W+", "", s, flags=re.UNICODE)
