@@ -6,7 +6,7 @@ from messages import MESSAGES
 from sqlalchemy import create_engine, and_, func, desc, asc
 from sqlalchemy.orm import scoped_session, sessionmaker
 from db_map import Users, Chats, Karma, Votings, Votes, Triggers
-from conf import DB_FILENAME, MY_ID, LIMIT_ADVICE, LIMIT_JOKE
+from conf import DB_FILENAME, MY_ID, LIMIT_ADVICE, LIMIT_JOKE, DICT
 from pytz import timezone
 from datetime import datetime
 
@@ -222,6 +222,8 @@ def is_need_fix_layout(s):
         return False
     if s[:4] == 'http':
         return False
+    if s.lower().split(' ')[0] in DICT:
+        print('Yes')
     s = s.replace("\n", "")
     s = re.sub(r"\s+", "", s, flags=re.UNICODE)
     s = re.sub(r"\W+", "", s, flags=re.UNICODE)
