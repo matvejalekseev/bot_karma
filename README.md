@@ -17,7 +17,7 @@ aiogram - https://aiogram.readthedocs.io/en/latest/index.html</br>
 aiosocksy - https://pypi.org/project/aiosocksy/</br>
 ```pip3.6 install -U aiosocksy```
 
-aiosocksy - http://flask.pocoo.org/</br>
+flask - http://flask.pocoo.org/</br>
 ```pip3.6 install -U flask```
 
 bs4</br>
