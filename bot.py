@@ -957,7 +957,6 @@ async def process_another_message(message: types.Message):
             session.close()
         await message.reply(MESSAGES['random_dislike'], disable_web_page_preview=True)
 
-subprocess.Popen("python3.6 receiver.py", shell=True)
 
 if __name__ == '__main__':
     executor.start_polling(dp, on_shutdown=shutdown)
