@@ -2,6 +2,7 @@ hello = 'Добрый день, {name}\n'
 start = 'Все доступные функции используются в определенных чатах, не обижайся'
 help = start
 error = 'Ошибка'
+done = 'Готово'
 joke_another_type = 'Только gif и картинки'
 wait = '⏳ Надо немного подождать'
 limit_advice_is_over = 'К сожалению, только {limit} совета в день. До завтра!'
@@ -197,6 +198,7 @@ MESSAGES = {
         'joke_template': joke_template,
         'translate': translate,
         'new_jks': new_jks,
+        'done': done,
 
 }
 
