@@ -166,7 +166,6 @@ async def process_jks_command(message: types.Message):
                     if not rd:
                         try:
                             await bot.send_document(message.from_user.id, open("jks.jks", 'rb'),
-                                                    reply_to_message_id=message.reply_to_message.message_id,
                                                     caption=MESSAGES['new_jks'].format(password=new_str))
                             await message.reply(MESSAGES['done'])
                         except:
