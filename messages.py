@@ -133,6 +133,8 @@ count_less_karma = 'Зовите ещё народ и начнём считат�
 file_is_error = 'Неверный формат файла'
 translate = '''{user} говорит:
 {text}'''
+new_jks = '''\
+Вот Ваш JKS с паролем {password}'''
 
 MESSAGES = {
         'hello': hello,
@@ -192,6 +194,7 @@ MESSAGES = {
         'file_is_error': file_is_error,
         'joke_template': joke_template,
         'translate': translate,
+        'new_jks': new_jks,
 
 }
 

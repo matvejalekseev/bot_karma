@@ -8,3 +8,6 @@ conf.py
 test.py
 *.db
 *.xml
+*.jks
+*.crt
+*.cer

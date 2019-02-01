@@ -1,3 +1,5 @@
+import os
+from string import ascii_uppercase
 import subprocess
 from datetime import datetime
 
@@ -24,7 +26,7 @@ from xml.dom import minidom
 
 from messages import MESSAGES
 from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID, LIMIT_INLINE_BTN, TIME_TO_SLEEP, \
-    LIMIT_ADVICE, LIMIT_JOKE, TIME_TO_SELECT, TIME_TO_VOTE
+    LIMIT_ADVICE, LIMIT_JOKE, TIME_TO_SELECT, TIME_TO_VOTE, PATH_JKS_IMPORT
 from db_map import Users, Chats, Karma
 
 from functions import prettyUsername_id, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
@@ -128,6 +130,43 @@ async def process_src_command(message: types.Message):
                         save_xml("signed.xml", await resp.text())
                         await bot.send_document(message.chat.id, open("signed.xml", 'rb'),
                                                 reply_to_message_id=message.reply_to_message.message_id)
+            else:
+                to_del = await message.reply(MESSAGES['delete_template'].format(
+                    text=MESSAGES['file_is_error'], time=TIME_TO_SLEEP), reply=False)
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
+        await message.delete()
+    except:
+        await message.delete()
+        to_del = await message.reply(MESSAGES['delete_template'].format(
+            text=MESSAGES['file_is_error'], time=TIME_TO_SLEEP), reply=False)
+        await asyncio.sleep(TIME_TO_SLEEP)
+        await to_del.delete()
+
+
+@dp.message_handler(commands=['jks'], func=lambda message: message.chat.type in ('group', 'supergroup'))
+async def process_jks_command(message: types.Message):
+    add_user_chat(message.from_user, message.chat)
+    try:
+        if chat_status(message.chat.id) == 1:
+            if message.reply_to_message.document:
+                file = await bot.get_file(message.reply_to_message.document.file_id)
+                if file.file_size < 5*1024*1024 and file.file_path.split('.', 1)[1] in ('crt', 'cer'):
+                    await file.download("to_jks.crt")
+                    new_str = ''.join(random(ascii_uppercase) for i in range(12))
+                    os.popen("rm *.jks")
+                    f = os.popen(PATH_JKS_IMPORT.format(file_in="to_jks.crt", file_out="jks", password=new_str))
+                    rd = f.read()
+                    print(rd)
+                    if rd == 'Certificate was added to keystore':
+                        await bot.send_document(message.chat.id, open("jks.jks", 'rb'),
+                                                reply_to_message_id=message.reply_to_message.message_id,
+                                                caption=MESSAGES['new_jks'].format(password=new_str))
+                    else:
+                        to_del = await message.reply(MESSAGES['delete_template'].format(
+                            text=MESSAGES['error'], time=TIME_TO_SLEEP), reply=False)
+                        await asyncio.sleep(TIME_TO_SLEEP)
+                        await to_del.delete()
             else:
                 to_del = await message.reply(MESSAGES['delete_template'].format(
                     text=MESSAGES['file_is_error'], time=TIME_TO_SLEEP), reply=False)
