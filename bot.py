@@ -151,15 +151,15 @@ async def process_jks_command(message: types.Message):
         if chat_status(message.chat.id) == 1:
             if message.reply_to_message.document:
                 file = await bot.get_file(message.reply_to_message.document.file_id)
-                print(file)
-                print(file.file_path)
+                to_del = await message.reply(str(file), reply=False)
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
                 if file.file_size < 5*1024*1024 and file.file_path.split('.', 1)[1] in ('crt', 'cer'):
                     await file.download("to_jks.crt")
                     new_str = ''.join(random(ascii_uppercase) for i in range(12))
                     os.popen("rm *.jks")
                     f = os.popen(PATH_JKS_IMPORT.format(file_in="to_jks.crt", file_out="jks", password=new_str))
                     rd = f.read()
-                    print(rd)
                     if rd == 'Certificate was added to keystore':
                         await bot.send_document(message.chat.id, open("jks.jks", 'rb'),
                                                 reply_to_message_id=message.reply_to_message.message_id,
