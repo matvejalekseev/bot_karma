@@ -134,7 +134,9 @@ file_is_error = 'Неверный формат файла'
 translate = '''{user} говорит:
 {text}'''
 new_jks = '''\
-Вот Ваш JKS с паролем {password}'''
+Вот Ваш JKS 
+Алиас: <pre>mykey</pre>
+Пароль: <pre>{password}</pre>'''
 
 MESSAGES = {
         'hello': hello,
