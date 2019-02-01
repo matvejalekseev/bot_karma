@@ -1,5 +1,6 @@
 import os
 from string import ascii_uppercase
+from random import choice
 import subprocess
 from datetime import datetime
 
@@ -156,7 +157,7 @@ async def process_jks_command(message: types.Message):
             await to_del.delete()
             if file.file_size < 5*1024*1024 and file.file_path.split('.', 1)[1] in ('crt', 'cer'):
                 await file.download("to_jks.crt")
-                new_str = ''.join(random(ascii_uppercase) for i in range(12))
+                new_str = ''.join(choice(ascii_uppercase) for i in range(12))
                 os.popen("rm *.jks")
                 f = os.popen(PATH_JKS_IMPORT.format(file_in="to_jks.crt", file_out="jks", password=new_str))
                 rd = f.read()
