@@ -151,6 +151,7 @@ async def process_jks_command(message: types.Message):
         if chat_status(message.chat.id) == 1:
             if message.reply_to_message.document:
                 file = await bot.get_file(message.reply_to_message.document.file_id)
+                print(file)
                 if file.file_size < 5*1024*1024 and file.file_path.split('.', 1)[1] in ('crt', 'cer'):
                     await file.download("to_jks.crt")
                     new_str = ''.join(random(ascii_uppercase) for i in range(12))
