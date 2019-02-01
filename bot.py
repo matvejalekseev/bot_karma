@@ -119,6 +119,11 @@ async def process_src_command(message: types.Message):
                     await file.download("to_sign.xml")
                     login_template = open("to_sign.xml", 'rb').read()
                     k = 1
+                else:
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['file_is_error'], time=TIME_TO_SLEEP), reply=False)
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
             else:
                 login_template = message.reply_to_message.text
                 login_template = login_template.encode('utf-8')
@@ -167,6 +172,11 @@ async def process_jks_command(message: types.Message):
                             text=MESSAGES['error'], time=TIME_TO_SLEEP), reply=False)
                         await asyncio.sleep(TIME_TO_SLEEP)
                         await to_del.delete()
+                else:
+                    to_del = await message.reply(MESSAGES['delete_template'].format(
+                        text=MESSAGES['file_is_error'], time=TIME_TO_SLEEP), reply=False)
+                    await asyncio.sleep(TIME_TO_SLEEP)
+                    await to_del.delete()
             else:
                 to_del = await message.reply(MESSAGES['delete_template'].format(
                     text=MESSAGES['file_is_error'], time=TIME_TO_SLEEP), reply=False)
