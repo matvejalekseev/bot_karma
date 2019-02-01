@@ -164,17 +164,9 @@ async def process_jks_command(message: types.Message):
                     f = os.popen(PATH_JKS_IMPORT.format(file_in="to_jks.crt", file_out="jks", password=new_str))
                     rd = f.read()
                     if not rd:
-                        try:
-                            await bot.send_document(message.from_user.id, open("jks.jks", 'rb'),
-                                                    caption=MESSAGES['new_jks'].format(password=new_str))
-                            await bot.send_message(message.chat.id, MESSAGES['done'],
-                                                    reply_to_message_id=message.reply_to_message.message_id)
-                        except:
-                            to_del = await message.reply(MESSAGES['delete_template'].format(
-                                text=MESSAGES['only_private'], time=TIME_TO_SLEEP), reply=False)
-                            await message.delete()
-                            await asyncio.sleep(TIME_TO_SLEEP)
-                            await to_del.delete()
+                        await bot.send_document(message.chat.id, open("jks.jks", 'rb'),
+                                                reply_to_message_id=message.reply_to_message.message_id,
+                                                caption=MESSAGES['new_jks'].format(password=new_str))
                     else:
                         to_del = await message.reply(MESSAGES['delete_template'].format(
                             text=MESSAGES['error'], time=TIME_TO_SLEEP), reply=False)
