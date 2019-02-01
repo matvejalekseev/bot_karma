@@ -167,7 +167,8 @@ async def process_jks_command(message: types.Message):
                         try:
                             await bot.send_document(message.from_user.id, open("jks.jks", 'rb'),
                                                     caption=MESSAGES['new_jks'].format(password=new_str))
-                            await message.reply(MESSAGES['done'])
+                            await bot.send_message(message.chat.id, MESSAGES['done'],
+                                                    reply_to_message_id=message.reply_to_message.message_id)
                         except:
                             to_del = await message.reply(MESSAGES['delete_template'].format(
                                 text=MESSAGES['only_private'], time=TIME_TO_SLEEP), reply=False)
