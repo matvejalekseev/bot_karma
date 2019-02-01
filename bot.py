@@ -158,10 +158,7 @@ async def process_jks_command(message: types.Message):
                 os.popen("rm *.jks")
                 f = os.popen(PATH_JKS_IMPORT.format(file_in="to_jks.crt", file_out="jks", password=new_str))
                 rd = f.read()
-                to_del = await message.reply(str(rd), reply=False)
-                await asyncio.sleep(TIME_TO_SLEEP)
-                await to_del.delete()
-                if rd == 'Certificate was added to keystore':
+                if not rd:
                     await bot.send_document(message.chat.id, open("jks.jks", 'rb'),
                                             reply_to_message_id=message.reply_to_message.message_id,
                                             caption=MESSAGES['new_jks'].format(password=new_str))
