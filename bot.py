@@ -197,16 +197,16 @@ async def process_advice_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     if chat_status(message.chat.id) == 1:
         async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get('https://ips.rosminzdrav.ru/gw/monitoring?p=policies') as resp:
-                    response = get_stats(await resp.text())
-                    await message.reply(MESSAGES['ips_template'].format(text=response), reply=False,
-                                        disable_web_page_preview=True)
-            except:
-                to_del = await message.reply(MESSAGES['delete_template'].format(
-                                text=MESSAGES['error'], time=TIME_TO_SLEEP), reply=False)
-                await asyncio.sleep(TIME_TO_SLEEP)
-                await to_del.delete()
+            #try:
+            async with session.get('https://ips.rosminzdrav.ru/gw/monitoring?p=policies') as resp:
+                response = get_stats(await resp.text())
+                await message.reply(MESSAGES['ips_template'].format(text=response), reply=False,
+                                    disable_web_page_preview=True)
+            #except:
+             #   to_del = await message.reply(MESSAGES['delete_template'].format(
+             #                   text=MESSAGES['error'], time=TIME_TO_SLEEP), reply=False)
+             #   await asyncio.sleep(TIME_TO_SLEEP)
+              #  await to_del.delete()
     await message.delete()
 
 
