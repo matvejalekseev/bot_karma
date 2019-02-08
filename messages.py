@@ -138,6 +138,10 @@ new_jks = '''\
 Вот Ваш JKS 
 Алиас: <pre>mykey</pre>
 Пароль: <pre>{password}</pre>'''
+ips_template = '''\
+Среднее время применения политик на промышленном стенде ИПС:
+
+{text}'''
 
 MESSAGES = {
         'hello': hello,

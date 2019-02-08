@@ -19,6 +19,66 @@ _eng_chars = u"~`!@#$%^&qwertyuiop[]asdfghjkl;'zxcvbnm,./QWERTYUIOP{}ASDFGHJKL:\
 _rus_chars = u"Ёё!\"№;%:?йцукенгшщзхъфывапролджэячсмитьбю.ЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭ/ЯЧСМИТЬБЮ,-*)(%\\"
 _trans_table = dict(zip(_eng_chars, _rus_chars))
 
+politics_ru = {
+    'ITEM_ALL/policies/access/request': 'Политики "Проверка доступов" уровня "Все Запрос/ответ" для запроса',
+    'ITEM_ALL/policies/access/response': 'Политики "Проверка доступов" уровня "Все Запрос/ответ" для ответа',
+    'ITEM_ALL/policies/method-access/request': 'Политики "Проверки HTTP метода" уровня "Все Запрос/ответ" для запроса',
+    'ITEM_ALL/policies/method-access/response': 'Политики "Проверки HTTP метода" уровня "Все Запрос/ответ" для ответа',
+    'ITEM_ALL/policies/ip-access/request': 'Политики "Проверки IP адреса" уровня "Все Запрос/ответ" для запроса',
+    'ITEM_ALL/policies/ip-access/response': 'Политики "Проверки IP адреса" уровня "Все Запрос/ответ" для ответа',
+    'DATA_SOAP/policies/sign/request': 'Политики "Подписи" уровня "SOAP Тело запроса/ответа" для запроса',
+    'DATA_SOAP/policies/sign/response': 'Политики "Подписи" уровня "SOAP Тело запроса/ответа" для ответа',
+    'ITEM_SOAP/policies/addressing/request': 'Политики "Адресации" уровня "SOAP Запрос/ответ" для запроса',
+    'ITEM_SOAP/policies/addressing/response': 'Политики "Адресации" уровня "SOAP Запрос/ответ" для ответа',
+    'ITEM_SOAP/policies/audit/request': 'Политики "Аудита" уровня "SOAP Запрос/ответ" для запроса',
+    'ITEM_SOAP/policies/audit/response': 'Политики "Аудита" уровня "SOAP Запрос/ответ" для ответа',
+    'ITEM_SOAP/policies/sign-validation/request': 'Политики "Проверки целостности SOAP-запроса" уровня "SOAP Запрос/ответ" для запроса',
+    'ITEM_SOAP/policies/sign-validation/response': 'Политики "Проверки целостности SOAP-запроса" уровня "SOAP Запрос/ответ" для ответа',
+    'ITEM_SOAP/policies/action-access/request': 'Политики "Проверки SOAP-действий" уровня "SOAP Запрос/ответ" для запроса',
+    'ITEM_SOAP/policies/action-access/response': 'Политики "Проверки SOAP-действий" уровня "SOAP Запрос/ответ" для ответа',
+    'ITEM_SOAP/policies/authentication/request': 'Политики "Аутентификации" уровня "SOAP Запрос/ответ" для запроса',
+    'ITEM_SOAP/policies/authentication/response': 'Политики "Аутентификации" уровня "SOAP Запрос/ответ" для ответа',
+    'ITEM_SOAP/request': '{type} применений всех политик уровня "SOAP Запрос/ответ" для запроса',
+    'ITEM_SOAP/response': '{type} применений всех политик уровня "SOAP Запрос/ответ" для ответа',
+    'ITEM_ALL/request': '{type} применений всех политик уровня "Все Запрос/ответ" для запроса',
+    'ITEM_ALL/response': '{type} применений всех политик уровня "Все Запрос/ответ" для ответа',
+    'DATA_SOAP/request': '{type} применений всех политик уровня "SOAP Тело запроса/ответа" для запроса',
+    'DATA_SOAP/response': '{type} применений всех политик уровня "SOAP Тело запроса/ответа" для ответа',
+}
+
+
+def get_stats(d, head=None):
+    result = ''
+    for key, value in d.items():
+        #if key == "maxTime":
+        #    if head in politics_ru:
+        #        print(politics_ru[head].format(type='Максимальное время'), value)
+        #    else:
+        #        print(head, value)
+        #if key == "count":
+        #    if head in politics_ru:
+        #        print(politics_ru[head].format(type='Количество'), value)
+        #    else:
+        #        print(head, value)
+        #if key == "minTime":
+        #    if head in politics_ru:
+        #        print(politics_ru[head].format(type='Минимальное время'), value)
+        #    else:
+        #        print(head, value)
+        if key == "avgTime":
+            if head in politics_ru:
+                result += str(politics_ru[head]) + ' <b>' + str(value) + '</b>\n'
+            else:
+                result += str(head) + str(value)
+        elif type(value) is dict:
+            if head:
+                h = head + '/' + key
+            else:
+                h = key
+            result += get_stats(value, h)
+    return result
+
+
 def date_now():
     return datetime.now(UTC).date()
 
