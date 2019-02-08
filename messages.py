@@ -203,7 +203,7 @@ MESSAGES = {
     'translate': translate,
     'new_jks': new_jks,
     'done': done,
-    'ips_template ': ips_template,
+    'ips_template': ips_template,
 
 }
 
