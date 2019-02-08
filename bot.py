@@ -196,7 +196,7 @@ async def process_jks_command(message: types.Message):
 async def process_advice_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     if chat_status(message.chat.id) == 1:
-        mode = message.text[:4]
+        mode = message.text[5:]
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.get('http://ips.rosminzdrav.ru/gw/monitoring?p=policies') as resp:
