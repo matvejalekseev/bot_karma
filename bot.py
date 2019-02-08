@@ -196,17 +196,18 @@ async def process_jks_command(message: types.Message):
 async def process_advice_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     if chat_status(message.chat.id) == 1:
+        mode = message.text[:4]
         async with aiohttp.ClientSession() as session:
-            #try:
-            async with session.get('http://ips.rosminzdrav.ru/gw/monitoring?p=policies') as resp:
-                response = get_stats(json.loads(await resp.text()))
-                await message.reply(MESSAGES['ips_template'].format(text=response), reply=False,
-                                    disable_web_page_preview=True)
-            #except:
-             #   to_del = await message.reply(MESSAGES['delete_template'].format(
-             #                   text=MESSAGES['error'], time=TIME_TO_SLEEP), reply=False)
-             #   await asyncio.sleep(TIME_TO_SLEEP)
-              #  await to_del.delete()
+            try:
+                async with session.get('http://ips.rosminzdrav.ru/gw/monitoring?p=policies') as resp:
+                    response = get_stats(json.loads(await resp.text()), mode)
+                    await message.reply(MESSAGES['ips_template'].format(text=response), reply=False,
+                                        disable_web_page_preview=True)
+            except:
+                to_del = await message.reply(MESSAGES['delete_template'].format(
+                                text=MESSAGES['error'], time=TIME_TO_SLEEP), reply=False)
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
     await message.delete()
 
 

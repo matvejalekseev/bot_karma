@@ -20,62 +20,65 @@ _rus_chars = u"Ёё!\"№;%:?йцукенгшщзхъфывапролджэяч�
 _trans_table = dict(zip(_eng_chars, _rus_chars))
 
 politics_ru = {
-    'ITEM_ALL/policies/access/request': 'Политики "Проверка доступов" для запроса',
-    'ITEM_ALL/policies/access/response': 'Политики "Проверка доступов" для ответа',
-    'ITEM_ALL/policies/method-access/request': 'Политики "Проверки HTTP метода" для запроса',
-    'ITEM_ALL/policies/method-access/response': 'Политики "Проверки HTTP метода" для ответа',
-    'ITEM_ALL/policies/ip-access/request': 'Политики "Проверки IP адреса" для запроса',
-    'ITEM_ALL/policies/ip-access/response': 'Политики "Проверки IP адреса" для ответа',
-    'DATA_SOAP/policies/sign/request': 'Политики "Подписи" для запроса',
-    'DATA_SOAP/policies/sign/response': 'Политики "Подписи"  для ответа',
-    'ITEM_SOAP/policies/addressing/request': 'Политики "Адресации" для запроса',
-    'ITEM_SOAP/policies/addressing/response': 'Политики "Адресации" для ответа',
-    'ITEM_SOAP/policies/audit/request': 'Политики "Аудита" для запроса',
-    'ITEM_SOAP/policies/audit/response': 'Политики "Аудита" для ответа',
-    'ITEM_SOAP/policies/sign-validation/request': 'Политики "Проверки целостности SOAP-запроса" для запроса',
-    'ITEM_SOAP/policies/sign-validation/response': 'Политики "Проверки целостности SOAP-запроса" для ответа',
-    'ITEM_SOAP/policies/action-access/request': 'Политики "Проверки SOAP-действий" для запроса',
-    'ITEM_SOAP/policies/action-access/response': 'Политики "Проверки SOAP-действий" для ответа',
-    'ITEM_SOAP/policies/authentication/request': 'Политики "Аутентификации" для запроса',
-    'ITEM_SOAP/policies/authentication/response': 'Политики "Аутентификации" для ответа',
-    'ITEM_SOAP/request': '{type} применений всех политик для запроса',
-    'ITEM_SOAP/response': '{type} применений всех политик для ответа',
-    'ITEM_ALL/request': '{type} применений всех политик для запроса',
-    'ITEM_ALL/response': '{type} применений всех политик для ответа',
-    'DATA_SOAP/request': '{type} применений всех политик  для запроса',
-    'DATA_SOAP/response': '{type} применений всех политик  для ответа',
+    'DATA_SOAP': 'SOAP Тело запроса/ответа',
+	'ITEM_ALL': 'Все Запрос/ответ',
+	'ITEM_SOAP': 'SOAP Запрос/ответ',
+	'access': '-Политика проверка доступов',
+	'method-access': '-Проверки HTTP метода',
+	'ip-access': '-Проверки IP адреса',
+	'sign': '-Подписи',
+	'addressing': '-Адресации',
+	'audit': '-Аудита',
+	'sign-validation': '-Проверки целостности SOAP-запроса',
+	'action-access': '-Проверки SOAP-действий',
+	'authentication': '-Аутентификации',
+    'request': '--Запрос',
+	'response': '--Ответ',
 }
 
 
-def get_stats(d, head=None):
+politics_re_ru = {
+    'minTime': '---Минимальное время',
+    'maxTime': '---Максимальное время',
+    'count': '---Количество',
+    'avgTime': '---Среднее время',
+}
+
+
+def intWithCommas(x):
+    if type(x) not in [int]:
+        raise TypeError("Parameter must be an integer.")
+    if x < 0:
+        return '-' + intWithCommas(-x)
+    result = ''
+    while x >= 1000:
+        x, r = divmod(x, 1000)
+        result = " %03d%s" % (r, result)
+    return "%d%s" % (x, result)
+
+
+def get_stats(d, mode=None):
     result = ''
     for key, value in d.items():
-        #if key == "maxTime":
-        #    if head in politics_ru:
-        #        print(politics_ru[head].format(type='Максимальное время'), value)
-        #    else:
-        #        print(head, value)
-        #if key == "count":
-        #    if head in politics_ru:
-        #        print(politics_ru[head].format(type='Количество'), value)
-        #    else:
-        #        print(head, value)
-        #if key == "minTime":
-        #    if head in politics_ru:
-        #        print(politics_ru[head].format(type='Минимальное время'), value)
-        #    else:
-        #        print(head, value)
-        if key == "avgTime":
-            if head in politics_ru:
-                result += str(politics_ru[head]) + ' <b>' + str(value) + '</b>\n'
-            else:
-                result += str(head) + str(value)
-        elif type(value) is dict:
-            if head:
-                h = head + '/' + key
-            else:
-                h = key
-            result += get_stats(value, h)
+        if mode == 'avg':
+            if key == 'avgTime':
+                result += politics_re_ru[key] + ' <b>' + intWithCommas(value) + '</b>\n'
+        elif mode == 'min':
+            if key == 'minTime':
+                result += politics_re_ru[key] + ' <b>' + intWithCommas(value) + '</b>\n'
+        elif mode == 'max':
+            if key == 'maxTime':
+                result += politics_re_ru[key] + ' <b>' + intWithCommas(value) + '</b>\n'
+        elif mode == 'count':
+            if key == 'count':
+                result += politics_re_ru[key] + ' <b>' + intWithCommas(value) + '</b>\n'
+        else:
+            if key in politics_re_ru:
+                result += politics_re_ru[key] + ' <b>' + intWithCommas(value) + '</b>\n'
+        if type(value) is dict:
+            if key in politics_ru:
+                result += politics_ru[key] + "\n"
+            result += get_stats(value, mode)
     return result
 
 
