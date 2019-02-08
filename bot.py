@@ -198,7 +198,7 @@ async def process_advice_command(message: types.Message):
     if chat_status(message.chat.id) == 1:
         async with aiohttp.ClientSession() as session:
             #try:
-            async with session.get('https://ips.rosminzdrav.ru/gw/monitoring?p=policies') as resp:
+            async with session.get('http://ips.rosminzdrav.ru/gw/monitoring?p=policies') as resp:
                 response = get_stats(await resp.text())
                 await message.reply(MESSAGES['ips_template'].format(text=response), reply=False,
                                     disable_web_page_preview=True)
