@@ -291,6 +291,8 @@ def is_need_fix_layout(s):
     s = re.sub(r"\s+", "", s, flags=re.UNICODE)
     s = re.sub(r"\W+", "", s, flags=re.UNICODE)
     s = re.sub(r"\d+", "", s, flags=re.UNICODE)
+    if s[0] == '@':
+        return False
     if len(s) == 0:
         return False
     while i <= len(s)-1:

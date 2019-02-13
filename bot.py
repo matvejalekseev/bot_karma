@@ -1,7 +1,6 @@
 import os
 from string import ascii_uppercase
 from random import choice
-import subprocess
 from datetime import datetime
 
 import random
@@ -27,7 +26,8 @@ from xml.dom import minidom
 
 from messages import MESSAGES
 from conf import LOG_FILENAME, TOKEN, DB_FILENAME, PROXY_AUTH, PROXY_URL, MY_ID, LIMIT_INLINE_BTN, TIME_TO_SLEEP, \
-    LIMIT_ADVICE, LIMIT_JOKE, TIME_TO_SELECT, TIME_TO_VOTE, PATH_JKS_IMPORT
+    LIMIT_ADVICE, LIMIT_JOKE, TIME_TO_SELECT, TIME_TO_VOTE, PATH_JKS_IMPORT, ENDPOINT_SIGN, ENDPOINT_IPS, \
+    ENDPOINT_ADVICE, ENDPOINT_JOKE
 from db_map import Users, Chats, Karma
 
 from functions import prettyUsername_id, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
@@ -112,7 +112,6 @@ async def process_src_command(message: types.Message):
     add_user_chat(message.from_user, message.chat)
     try:
         if chat_status(message.chat.id) == 1:
-            endpoint = "https://ips-test.rosminzdrav.ru/d9a19022dfdb0"
             k = 0
             if message.reply_to_message.document:
                 file = await bot.get_file(message.reply_to_message.document.file_id)
@@ -133,7 +132,7 @@ async def process_src_command(message: types.Message):
                 async with aiohttp.ClientSession() as session:
                     session.headers = {"Content-Type": "text/xml; charset=utf-8"}
                     session.headers.update({"Content-Length": str(len(login_template))})
-                    async with session.post(url=endpoint, verify_ssl=False, data=login_template) as resp:
+                    async with session.post(url=ENDPOINT_SIGN, verify_ssl=False, data=login_template) as resp:
                         save_xml("signed.xml", await resp.text())
                         await bot.send_document(message.chat.id, open("signed.xml", 'rb'),
                                                 reply_to_message_id=message.reply_to_message.message_id)
@@ -199,7 +198,7 @@ async def process_advice_command(message: types.Message):
         mode = message.text[5:]
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.get('http://ips.rosminzdrav.ru/gw/monitoring?p=policies') as resp:
+                async with session.get(ENDPOINT_IPS) as resp:
                     response = get_stats(json.loads(await resp.text()), mode)
                     await message.reply(MESSAGES['ips_template'].format(text=response), reply=False,
                                         disable_web_page_preview=True)
@@ -223,7 +222,7 @@ async def process_advice_command(message: types.Message):
     else:
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.get('http://fucking-great-advice.ru/api/random') as resp:
+                async with session.get(ENDPOINT_ADVICE) as resp:
                     await message.reply(MESSAGES['advice_template'].format(name=prettyUsername_id(message.from_user.full_name,
                                                                                                 message.from_user.id),
                                          advice=(json.loads(await resp.text(), encoding="utf-8")['text'])), reply=False,
@@ -253,7 +252,7 @@ async def process_joke_command(message: types.Message):
             try:
                 if message.chat.type in ('group', 'supergroup'):
                     await message.delete()
-                async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i),
+                async with session.get(ENDPOINT_JOKE.format(page=i),
                                        verify_ssl=False) as resp:
                     if resp.status == 200:
                         response = json.loads(await resp.text())['result']
@@ -290,7 +289,7 @@ async def process_callback_next_joke(callback_query: types.CallbackQuery):
     if (now - lastUpdated).total_seconds() > 5:
         async with aiohttp.ClientSession() as session:
             i = random.randint(0, 2300)
-            async with session.get('http://developerslife.ru/top/{page}?json=true'.format(page=i),
+            async with session.get(ENDPOINT_JOKE.format(page=i),
                                    verify_ssl=False) as resp:
                 response = json.loads(await resp.text())['result']
                 j = random.randint(0, len(response) - 1)
@@ -302,7 +301,7 @@ async def process_callback_next_joke(callback_query: types.CallbackQuery):
                     inline_kb.add(inline_btn)
                 await bot.edit_message_media(chat_id=callback_query.message.chat.id,
                                              media=InputMediaDocument(response[j]['videoURL'],
-                                                                      caption=response[j]['description']),
+                                                                      caption=MESSAGES['joke_template'].format(joke=response[j]['description'])),
                                              message_id=callback_query.message.message_id,
                                              reply_markup=inline_kb)
         await bot.answer_callback_query(callback_query.id, '')
