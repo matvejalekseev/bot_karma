@@ -741,6 +741,21 @@ async def process_restrict_command(message: types.Message):
                 await message.delete()
                 await asyncio.sleep(TIME_TO_SLEEP)
                 await to_del.delete()
+            elif message.reply_to_message.audio:
+                if message.reply_to_message.caption:
+                    text = message.reply_to_message.caption
+                else:
+                    text = ''
+                new_trigger(name, text, message.chat.id,
+                            message.reply_to_message.audio.file_id,
+                            'audio')
+                to_del = await message.reply_to_message.reply(
+                    MESSAGES['delete_template'].format(text=MESSAGES['trigger_save'],
+                                                       time=TIME_TO_SLEEP),
+                    disable_web_page_preview=True)
+                await message.delete()
+                await asyncio.sleep(TIME_TO_SLEEP)
+                await to_del.delete()
             elif message.reply_to_message.photo:
                 if message.reply_to_message.caption:
                     text = message.reply_to_message.caption
@@ -815,6 +830,8 @@ async def process_edit_message(message: types.Message):
                 await bot.send_photo(message.chat.id, trig.media_id, caption=trig.text)
             elif trig.type == 'animation':
                 await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+            elif trig.type == 'audio':
+                await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
             elif trig.type == 'sticker':
                 await bot.send_sticker(message.chat.id, trig.media_id)
             elif trig.type == 'text':
@@ -876,6 +893,8 @@ async def process_another_message(message: types.Message):
         if trig:
             if trig.type == 'photo':
                 await bot.send_photo(message.chat.id, trig.media_id, caption=trig.text)
+            elif trig.type == 'audio':
+                await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
             elif trig.type == 'animation':
                 await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
             elif trig.type == 'sticker':
