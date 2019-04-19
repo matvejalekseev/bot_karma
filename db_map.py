@@ -105,3 +105,13 @@ class Triggers(Base):
         self.name = name
         self.type = type
         self.media_id = media_id
+
+
+class Esia_Status_logs(Base):
+    __tablename__ = 'Esia_Status_logs'
+    id = Column(Integer, primary_key=True)
+    status = Column('status', Integer)
+    date = Column('date', DateTime(timezone=True), default=func.now())
+
+    def __init__(self, status=1):
+        self.status = status

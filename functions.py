@@ -5,7 +5,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from messages import MESSAGES
 from sqlalchemy import create_engine, and_, func, desc, asc
 from sqlalchemy.orm import scoped_session, sessionmaker
-from db_map import Users, Chats, Karma, Votings, Votes, Triggers
+from db_map import Users, Chats, Karma, Votings, Votes, Triggers, Esia_Status_logs
 from conf import DB_FILENAME, MY_ID, LIMIT_ADVICE, LIMIT_JOKE, DICT
 from pytz import timezone
 from datetime import datetime
@@ -532,3 +532,31 @@ def chat_status(chat_id):
     if Session.query(Chats).filter(Chats.chat_id == chat_id).all():
         chat = Session.query(Chats).filter(Chats.chat_id == chat_id).one()
         return chat.status
+
+def esia_current_status():
+    status = Session.query(Esia_Status_logs).order_by(desc(Esia_Status_logs.id)).limit(1).all()
+    if status:
+        return status[0].status
+    else:
+        return 0
+
+
+def esia_status_add(status):
+    trigger_current = Esia_Status_logs(status=status)
+    session = Session()
+    try:
+        session.add(trigger_current)
+        session.commit()
+    finally:
+        session.close()
+
+
+def esia_get_statuses():
+    text = ''
+    statuses = Session.query(Esia_Status_logs).order_by(desc(Esia_Status_logs.id)).limit(20).all()
+    for status in statuses:
+        if status.status == 1:
+            text = MESSAGES['esia_up'].format(time=status.date.strftime("%X %d.%m.%Y")) + text
+        elif status.status == 0:
+            text = MESSAGES['esia_down'].format(time=status.date.strftime("%X %d.%m.%Y")) + text
+    return MESSAGES['esia_header'] + text

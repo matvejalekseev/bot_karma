@@ -10,8 +10,9 @@ if not os.path.exists(LOG_DIRECTORY):
     os.makedirs(LOG_DIRECTORY)
 
 #Создаем файл для лога
-if not os.path.isfile(f'./{LOG_FILENAME}'):
-    f = open(LOG_FILENAME, 'w+')
+if LOG_FILENAME:
+    if not os.path.isfile(f'./{LOG_FILENAME}'):
+        f = open(LOG_FILENAME, 'w+')
 
 #Настрйока для SQLite3
 engine = create_engine(f'sqlite:///{DB_FILENAME}')

@@ -143,6 +143,12 @@ ips_template = '''\
 
 {text}'''
 
+esia_header = '''\
+Ситуация по ЕСИА такая:
+'''
+esia_up = 'Поднялась {time}\n'
+esia_down = 'Упала {time}\n'
+
 MESSAGES = {
     'hello': hello,
     'start': start,
@@ -204,6 +210,9 @@ MESSAGES = {
     'new_jks': new_jks,
     'done': done,
     'ips_template': ips_template,
+    'esia_header': esia_header,
+    'esia_up': esia_up,
+    'esia_down': esia_down,
 
 }
 

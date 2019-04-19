@@ -33,7 +33,7 @@ from db_map import Users, Chats, Karma
 from functions import prettyUsername_id, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
     new_voting, karma_in_chat_text, current_state_vote, pagination_voting, trigger, triggers_list, new_trigger, \
     delete_trigger, change_chat_status, chat_status, vote_new, current_count_users_in_chat, fix_layout, \
-    is_need_fix_layout, get_stats
+    is_need_fix_layout, get_stats, esia_get_statuses
 from antimat import matfilter
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
@@ -105,6 +105,14 @@ async def process_src_command(message: types.Message):
     await message.delete()
     await asyncio.sleep(TIME_TO_SELECT)
     await to_del.delete()
+
+
+@dp.message_handler(commands=['esia'], func=lambda message: message.chat.type in ('group', 'supergroup'))
+async def process_src_command(message: types.Message):
+    if chat_status(message.chat.id) == 1:
+        add_user_chat(message.from_user, message.chat)
+        await bot.send_message(message.chat.id, esia_get_statuses(), disable_web_page_preview=True)
+        await message.delete()
 
 
 @dp.message_handler(commands=['sign'], func=lambda message: message.chat.type in ('group', 'supergroup'))
