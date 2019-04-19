@@ -8,7 +8,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from db_map import Users, Chats, Karma, Votings, Votes, Triggers, Esia_Status_logs
 from conf import DB_FILENAME, MY_ID, LIMIT_ADVICE, LIMIT_JOKE, DICT
 from pytz import timezone
-from datetime import datetime
+from datetime import datetime, timedelta
 
 engine = create_engine(f'sqlite:///{DB_FILENAME}')
 session_factory = sessionmaker(bind=engine)
@@ -553,10 +553,11 @@ def esia_status_add(status):
 
 def esia_get_statuses():
     text = ''
+    b = timedelta(hours=3)
     statuses = Session.query(Esia_Status_logs).order_by(desc(Esia_Status_logs.id)).limit(20).all()
     for status in statuses:
         if status.status == 1:
-            text = MESSAGES['esia_up'].format(time=status.date.strftime("%X %d.%m.%Y")) + text
+            text = MESSAGES['esia_up'].format(time=(status.date+b).strftime("%X %d.%m.%Y")) + text
         elif status.status == 0:
-            text = MESSAGES['esia_down'].format(time=status.date.strftime("%X %d.%m.%Y")) + text
+            text = MESSAGES['esia_down'].format(time=(status.date+b).strftime("%X %d.%m.%Y")) + text
     return MESSAGES['esia_header'] + text
