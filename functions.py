@@ -501,6 +501,11 @@ def triggers_list(chat_id):
         return MESSAGES['empty_triggers_list']
 
 
+def triggers_all(chat_id):
+    list = Session.query(Triggers).filter(Triggers.chat_id == chat_id).all()
+    return list
+
+
 def trigger(name, chat_id):
     if Session.query(Triggers).filter(and_((Triggers.name == name), (Triggers.chat_id == chat_id))).all():
         session = Session()

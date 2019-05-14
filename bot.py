@@ -33,7 +33,7 @@ from db_map import Users, Chats, Karma
 from functions import prettyUsername_id, add_user_chat, advices_limit_counter, jokes_limit_counter,  \
     new_voting, karma_in_chat_text, current_state_vote, pagination_voting, trigger, triggers_list, new_trigger, \
     delete_trigger, change_chat_status, chat_status, vote_new, current_count_users_in_chat, fix_layout, \
-    is_need_fix_layout, get_stats, esia_get_statuses
+    is_need_fix_layout, get_stats, esia_get_statuses, triggers_all
 from antimat import matfilter
 
 logging.basicConfig(format=u'%(filename)+13s [ LINE:%(lineno)-4s] %(levelname)-8s [%(asctime)s] %(message)s',
@@ -687,6 +687,26 @@ async def process_restrict_command(message: types.Message):
                                            can_send_other_messages=True)
     else:
         await message.delete()
+
+
+@dp.message_handler(commands=['trigger_all'], func=lambda message: message.chat.type in ('group', 'supergroup'))
+async def process_restrict_command(message: types.Message):
+    trigs = triggers_all(message.chat.id)
+    for trig in trigs:
+        await bot.send_message(message.chat.id, trig.name, disable_web_page_preview=True)
+        if trig.type == 'photo':
+            await bot.send_photo(message.chat.id, trig.media_id, caption=trig.text)
+        elif trig.type == 'animation':
+            await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+        elif trig.type == 'audio':
+            await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+        elif trig.type == 'sticker':
+            await bot.send_sticker(message.chat.id, trig.media_id)
+        elif trig.type == 'text':
+            await bot.send_message(message.chat.id, trig.text, disable_web_page_preview=True)
+        elif trig.type == 'document':
+            await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+        await asyncio.sleep(1)
 
 
 @dp.message_handler(commands=['trigger'], func=lambda message: message.chat.type in ('group', 'supergroup'))
