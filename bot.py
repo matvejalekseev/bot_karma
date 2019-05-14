@@ -691,22 +691,26 @@ async def process_restrict_command(message: types.Message):
 
 @dp.message_handler(commands=['trigger_all'], func=lambda message: message.chat.type in ('group', 'supergroup'))
 async def process_restrict_command(message: types.Message):
-    trigs = triggers_all(message.chat.id)
-    for trig in trigs:
-        await bot.send_message(message.chat.id, trig.name, disable_web_page_preview=True)
-        if trig.type == 'photo':
-            await bot.send_photo(message.chat.id, trig.media_id, caption=trig.text)
-        elif trig.type == 'animation':
-            await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
-        elif trig.type == 'audio':
-            await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
-        elif trig.type == 'sticker':
-            await bot.send_sticker(message.chat.id, trig.media_id)
-        elif trig.type == 'text':
-            await bot.send_message(message.chat.id, trig.text, disable_web_page_preview=True)
-        elif trig.type == 'document':
-            await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
-        await asyncio.sleep(1)
+    if message.from_user.id == MY_ID:
+        await message.delete()
+        trigs = triggers_all(message.chat.id)
+        for trig in trigs:
+            await bot.send_message(message.chat.id, trig.name, disable_web_page_preview=True)
+            if trig.type == 'photo':
+                await bot.send_photo(message.chat.id, trig.media_id, caption=trig.text)
+            elif trig.type == 'animation':
+                await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+            elif trig.type == 'audio':
+                await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+            elif trig.type == 'sticker':
+                await bot.send_sticker(message.chat.id, trig.media_id)
+            elif trig.type == 'text':
+                await bot.send_message(message.chat.id, trig.text, disable_web_page_preview=True)
+            elif trig.type == 'document':
+                await bot.send_document(message.chat.id, trig.media_id, caption=trig.text)
+            await asyncio.sleep(3)
+    else:
+        await message.delete()
 
 
 @dp.message_handler(commands=['trigger'], func=lambda message: message.chat.type in ('group', 'supergroup'))
