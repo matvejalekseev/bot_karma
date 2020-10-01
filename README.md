@@ -38,7 +38,7 @@ bs4</br>
 ```CREATE UNIQUE INDEX users_index_user_ids on Users (user_id);```</br>
 ```CREATE UNIQUE INDEX triggers_index_name_chat_ids on Triggers (name, chat_id);```</br>
 
-DICT формируется вот так:</br>
+DICT для списка слов формируется вот так:</br>
 ```
 import requests
 rs = requests.get('http://www.7english.ru/dictionary.php?id=2000&letter=all')
