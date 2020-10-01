@@ -908,7 +908,7 @@ async def process_edit_message(message: types.Message):
                                                    can_add_web_page_previews=True,
                                                    can_send_media_messages=True,
                                                   can_send_other_messages=True)
-            elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
+            elif re.findall(r'(?:^|\s)функциональности?(?:$|\s)', message.text.lower()):
                 to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
                                                                                 time=TIME_TO_SLEEP),
                                              disable_web_page_preview=True)
@@ -1029,7 +1029,7 @@ async def process_another_message(message: types.Message):
                                                    can_add_web_page_previews=True,
                                                    can_send_media_messages=True,
                                                   can_send_other_messages=True)
-            elif re.findall(r'(?:^|\s)функционала?(?:$|\s)', message.text.lower()):
+            elif re.findall(r'(?:^|\s)функциональности?(?:$|\s)', message.text.lower()):
                 to_del = await message.reply(MESSAGES['delete_template'].format(text=MESSAGES['functional'],
                                                                                 time=TIME_TO_SLEEP),
                                              disable_web_page_preview=True)
