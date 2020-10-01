@@ -213,7 +213,6 @@ MESSAGES = {
     'esia_header': esia_header,
     'esia_up': esia_up,
     'esia_down': esia_down,
-
 }
 
 
